@@ -338,7 +338,7 @@ If you want to allow outside access to the redis server \(which is not necessary
 
 As above, it is easier just to install Node.js from source so you can be sure you have the right version installed. On your server, use wget and paste the link that you copied in order to download the archive file:
 
-> Note: at the time of writing, we will need nodeJS 6.9.2 to work with Windshaft-cartodb.
+> Note: at the time of writing, we will need nodeJS v6.9.2 to work with Windshaft-cartodb.
 
 ```
 cd ~/
@@ -397,7 +397,223 @@ You're going to need to login to this new user account so that file permissions 
 su carto
 ```
 
-### j. CartoDB APIs
+### j. Ruby
+
+Download ruby-install. Ruby-install is a script that makes ruby install easier. It’s not needed to get ruby installed but it helps in the process.
+
+```bash
+cd ~/
+wget -O ruby-install-0.5.0.tar.gz https://github.com/postmodern/ruby-install/archive/v0.5.0.tar.gz
+tar -xzvf ruby-install-0.5.0.tar.gz
+cd ruby-install-0.5.0/
+sudo make install
+```
+
+Install some ruby dependencies
+
+```
+sudo yum install readline-devel
+```
+
+Install ruby 2.2.3. CartoDB has been deeply tested with Ruby 2.2.
+
+```
+sudo env "PATH=$PATH" ruby-install ruby 2.2.3
+```
+
+Ruby-install will leave everything in /opt/rubies/ruby-2.2.3/bin. To be able to run ruby and gem later on, you’ll need to add the Ruby 2.2.3 bin folder to your PATH variable. It’s also a good idea to include this line in your bashrc so that it gets loaded on restart
+
+```
+export PATH=$PATH:/opt/rubies/ruby-2.2.3/bin
+```
+
+Install bundler. Bundler is an app used to manage ruby dependencies. It is needed by CartoDB’s editor
+
+```
+sudo env "PATH=$PATH" gem install bundler
+```
+
+Install compass. It will be needed later on by CartoDB’s editor
+
+```
+sudo env "PATH=$PATH" gem install compass
+```
+
+### k. GDAL 2.1.3
+
+The Centos repository only provides GDAL v1.11.4 so we will need to install the latest GDAL v2.1.3 from source. As we've noted above, Carto uses two versions of GDAL in parallel, in order to borrow some features that were reintroduced in GDAL 2.x. Our installation here will 
+
+```
+cd ~/
+wget http://download.osgeo.org/gdal/2.1.3/gdal-2.1.3.tar.gz
+tar -xzf gdal-2.1.3.tar.gz
+./configure --with-geos=yes --with-pg=/usr/pgsql-9.5/bin/pg_config --prefix=/usr
+make
+sudo make install
+```
+
+> Note: the two flags included above for 'configure' are very important. Make sure that GEOS support shows "yes" and that the install script is able to find pg_config and PostgresQL.
+
+### l. GCC Library
+
+The system wide GCC library from Centos 7 is incompatiable with CatoDB MAP API. Therefore we will need to manually compile the library and make it available for the later use. The minimum version of GCC is v5.1.0. 
+
+```
+cd ~/
+wget http://gnu.uberglobalmirror.com/gcc/gcc-5.1.0/gcc-5.1.0.tar.bz2
+tar -xjf gcc-5.1.0.tar.bz2
+cd gcc-5.1.0
+./configure
+make
+```
+
+> Note: the compile will take a while as there are huge number of objects to run through.
+
+At this point, we do not need to "make install" as we only need to copy the library file (libstdc++.so.6.0.21) to the system /lib64 folder
+
+```
+sudo cp ./prev-x86_64-unknown-linux-gnu/libstdc++-v3/src/.libs/libstdc++.so.6.0.21 /lib64/
+```
+Update current symbolic link of the library
+```
+sudo rm /lib64/libstdc++.so.6
+sudo ln -s /lib64/libstdc++.so.6.0.21 /lib64/libstdc++.so.6
+```
+
+### m. CartoDB Components ###
+
+#### Editor
+
+Download the editor code:
+
+```
+cd /opt
+git clone --recursive https://github.com/CartoDB/cartodb.git
+cd cartodb
+```
+
+Install pip:
+
+```
+sudo wget  -O /tmp/get-pip.py https://bootstrap.pypa.io/get-pip.py
+sudo python /tmp/get-pip.py
+```
+
+Install a necessary package for python dependencies:
+
+```
+sudo yum install python-devel
+```
+
+Install dependencies
+
+```bash
+sudo yum install ImageMagick unzip patch gdal-devel
+export PATH=$PATH:/usr/pgsql-9.5/bin/
+RAILS_ENV=production bundle install --deployment --without development test
+npm install
+sudo env "PATH=$PATH" pip install --no-use-wheel -r python_requirements.txt --global-option=build_ext --global-option="-I/usr/include/gdal"
+```
+
+> Reminder: environment name is used above. Also note that "bundle install" above will fail if "/usr/pgsql-9.5/bin" is not included in your $PATH statement. Best practices on CentOS suggest that your path should be modified using a script in /etc/profile.d.
+
+Add the grunt command to the PATH:
+
+```
+export PATH=$PATH:$PWD/node_modules/grunt-cli/bin
+```
+
+Install all necessary gems:
+
+```
+bundle install
+```
+
+Precompile assets. Note that the last parameter is the environment used to run the application. It must be the same used in the Maps and SQL APIs
+
+```bash
+cp config/grunt_development.json config/grunt_production.json
+ulimit -n 2560
+bundle exec grunt --environment production
+```
+
+> Reminder: environment name here, but note that we're using the template for development to make our "grunt\_production.json". You can omit this first line above if working with a "development" environment as there is \(obviously\) already a config file for grunt\_development.
+
+Create configuration files:
+
+```
+cp config/app_config.yml.sample config/app_config.yml
+cp config/database.yml.sample config/database.yml
+```
+
+> Note: modify database.yml to include details of your database \(in our case using the details of Server02\) if you're not using localhost.
+
+Initialise the metadata database:
+
+```
+RAILS_ENV=production bundle exec rake db:create
+RAILS_ENV=production bundle exec rake db:migrate
+```
+
+> Reminder: above should be modified if using "development" environment.
+
+Now modify configuration files for the carto web application:
+
+```
+nano /opt/cartodb/config/app_config.yml
+```
+
+Change the line starting with: `session_domain:     '.localhost.lan'` to: `session_domain:     'carto.mapping.community'`
+
+Change the line starting with: `subdomainless_urls: false` to: `subdomainless_urls: true`
+
+Change the line starting with: `vizjson_cache_domains: ['.localhost.lan']` to `#  vizjson_cache_domains: ['.localhost.lan']` (it should be commented out)
+
+(JK Note: next line unsure - may need to revert this to a side loaded configuration, cf. original Readme.md from May, content under "Now finally edit the hosts file to include `localhost.lan` and whatever your server URL will be")
+
+Change the line starting with: `binary:           'which ogr2ogr2.1'` to: `binary:           'which ogr2ogr'`
+
+Change the line starting with: `account_host:       'localhost.lan:3000'` to: `account_host:       'carto.mapping.community'`
+
+Make the following changes to the `sql_api` section of this file as below: 
+```
+  sql_api:
+    private:
+      protocol:   'https'
+      domain:     'carto.mapping.community'
+      endpoint:   '/api/v1/sql'
+      port:       9090
+    public:
+      protocol:   'https'
+      domain:     'carto.mapping.community'
+      endpoint:   '/api/v2/sql'
+      port:       9090
+```
+
+Save the app_config.yml file and then edit the hosts file to include `localhost.lan` and whatever your server URL will be:
+
+```
+sudo nano /etc/hosts
+```
+
+Add the following line:
+```
+127.0.0.1   localhost.lan carto.mapping.community
+```
+
+Create /etc/carto so we can edit all the config files here here
+```
+sudo mkdir /etc/carto
+cd /etc/carto
+ln -s /opt/cartodb/config
+```
+
+Create /var/log/carto so we can put all the logs files in here
+```
+sudo mkdir /var/log/carto
+```
+
+### n. CartoDB APIs
 
 All the hard work above has paid off, as you have a working server environment that will provide the basis for an installation of the Carto platform:
 
@@ -527,185 +743,8 @@ node app.js production
 
 If this step fails saying log folder not found, you may need to manually create it, e.g. `mkdir /opt/Windshaft-cartodb/logs`
 
-### k. Ruby
 
-Download ruby-install. Ruby-install is a script that makes ruby install easier. It’s not needed to get ruby installed but it helps in the process.
-
-```bash
-cd ~/
-wget -O ruby-install-0.5.0.tar.gz https://github.com/postmodern/ruby-install/archive/v0.5.0.tar.gz
-tar -xzvf ruby-install-0.5.0.tar.gz
-cd ruby-install-0.5.0/
-sudo make install
-```
-
-Install some ruby dependencies
-
-```
-sudo yum install readline-devel
-```
-
-Install ruby 2.2.3. CartoDB has been deeply tested with Ruby 2.2.
-
-```
-sudo env "PATH=$PATH" ruby-install ruby 2.2.3
-```
-
-Ruby-install will leave everything in /opt/rubies/ruby-2.2.3/bin. To be able to run ruby and gem later on, you’ll need to add the Ruby 2.2.3 bin folder to your PATH variable. It’s also a good idea to include this line in your bashrc so that it gets loaded on restart
-
-```
-export PATH=$PATH:/opt/rubies/ruby-2.2.3/bin
-```
-
-Install bundler. Bundler is an app used to manage ruby dependencies. It is needed by CartoDB’s editor
-
-```
-sudo env "PATH=$PATH" gem install bundler
-```
-
-Install compass. It will be needed later on by CartoDB’s editor
-
-```
-sudo env "PATH=$PATH" gem install compass
-```
-
-### l. GDAL 2.1.3
-
-The Centos repository only provides GDAL v1.11.4 so we will need to install the latest GDAL v2.1.3 from source. As we've noted above, Carto uses two versions of GDAL in parallel, in order to borrow some features that were reintroduced in GDAL 2.x. Our installation here will 
-
-```
-cd ~/
-wget http://download.osgeo.org/gdal/2.1.3/gdal-2.1.3.tar.gz
-tar -xzf gdal-2.1.3.tar.gz
-./configure --with-geos=yes --with-pg=/usr/pgsql-9.5/bin/pg_config --prefix=/usr
-make
-sudo make install
-```
-
-> Note: the two flags included above for 'configure' are very important. Make sure that GEOS support shows "yes" and that the install script is able to find pg_config and PostgresQL.
-
-### m. CartoDB Components ###
-
-#### Editor
-
-Download the editor code:
-
-```
-cd /opt
-git clone --recursive https://github.com/CartoDB/cartodb.git
-cd cartodb
-```
-
-Install pip:
-
-```
-sudo wget  -O /tmp/get-pip.py https://bootstrap.pypa.io/get-pip.py
-sudo python /tmp/get-pip.py
-```
-
-Install a necessary package for python dependencies:
-
-```
-sudo yum install python-devel
-```
-
-Install dependencies
-
-```bash
-sudo yum install ImageMagick unzip patch gdal-devel
-export PATH=$PATH:/usr/pgsql-9.5/bin/
-RAILS_ENV=production bundle install --deployment --without development test
-npm install
-sudo env "PATH=$PATH" pip install --no-use-wheel -r python_requirements.txt --global-option=build_ext --global-option="-I/usr/include/gdal"
-```
-
-> Reminder: environment name is used above. Also note that "bundle install" above will fail if "/usr/pgsql-9.5/bin" is not included in your $PATH statement. Best practices on CentOS suggest that your path should be modified using a script in /etc/profile.d.
-
-Add the grunt command to the PATH:
-
-```
-export PATH=$PATH:$PWD/node_modules/grunt-cli/bin
-```
-
-Install all necessary gems:
-
-```
-bundle install
-```
-
-Precompile assets. Note that the last parameter is the environment used to run the application. It must be the same used in the Maps and SQL APIs
-
-```bash
-cp config/grunt_development.json config/grunt_production.json
-ulimit -n 2560
-bundle exec grunt --environment production
-```
-
-> Reminder: environment name here, but note that we're using the template for development to make our "grunt\_production.json". You can omit this first line above if working with a "development" environment as there is \(obviously\) already a config file for grunt\_development.
-
-Create configuration files:
-
-```
-cp config/app_config.yml.sample config/app_config.yml
-cp config/database.yml.sample config/database.yml
-```
-
-> Note: modify database.yml to include details of your database \(in our case using the details of Server02\) if you're not using localhost.
-
-Initialise the metadata database:
-
-```
-RAILS_ENV=production bundle exec rake db:create
-RAILS_ENV=production bundle exec rake db:migrate
-```
-
-> Reminder: above should be modified if using "development" environment.
-
-Now modify configuration files for the carto web application:
-
-```
-nano /opt/cartodb/config/app_config.yml
-```
-
-Change the line starting with: `session_domain:     '.localhost.lan'` to: `session_domain:     'carto.mapping.community'`
-
-Change the line starting with: `subdomainless_urls: false` to: `subdomainless_urls: true`
-
-Change the line starting with: `vizjson_cache_domains: ['.localhost.lan']` to `#  vizjson_cache_domains: ['.localhost.lan']` (it should be commented out)
-
-(JK Note: next line unsure - may need to revert this to a side loaded configuration, cf. original Readme.md from May, content under "Now finally edit the hosts file to include `localhost.lan` and whatever your server URL will be")
-
-Change the line starting with: `binary:           'which ogr2ogr2.1'` to: `binary:           'which ogr2ogr'`
-
-Change the line starting with: `account_host:       'localhost.lan:3000'` to: `account_host:       'carto.mapping.community'`
-
-Make the following changes to the `sql_api` section of this file as below: 
-```
-  sql_api:
-    private:
-      protocol:   'https'
-      domain:     'carto.mapping.community'
-      endpoint:   '/api/v1/sql'
-      port:       9090
-    public:
-      protocol:   'https'
-      domain:     'carto.mapping.community'
-      endpoint:   '/api/v2/sql'
-      port:       9090
-```
-
-Save the app_config.yml file and then edit the hosts file to include `localhost.lan` and whatever your server URL will be:
-
-```
-sudo nano /etc/hosts
-```
-
-Add the following line:
-```
-127.0.0.1   localhost.lan carto.mapping.community
-```
-
-### n. Install Apache and Passenger ###
+### o. Install Apache and Passenger ###
 
 Now we need a web server which we'll use with passenger to connect to the Carto rails server. NGINX is what Carto uses for their production servers, but we've gone with Apache for the sake of convenience. There are some indications that performance is better for high-volume installations using NGINX, so that's the main reason to defer to the alternative.
 
@@ -731,7 +770,7 @@ Run the Passenger Apache module installer:
 sudo passenger-install-apache2-module
 ```
 
-### o. Generate self-signed SSL certificate
+### p. Generate self-signed SSL certificate
 
 Because we're using https, we need to assign some secure certificates to our web server. Note, you should strongly resist any suggestions that you need to pay for https certificates. There is absolutely no reason to pay a Certificate authority for your certificates when perfectly secure and respected services like letsencrypt.com exist! We'll start with self-signed certificates and then go on to install letsencrypt certificates which will be automatically renewed using certbot below:
 
@@ -741,7 +780,7 @@ sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/httpd/cert
  -out /etc/httpd/certs/OurCert.crt
 ```
 
-### p. Configure Apache/Passenger with virtualhost and reverse proxy
+### q. Configure Apache/Passenger with virtualhost and reverse proxy
 
 Add a new config file `passenger.conf`
 
@@ -767,6 +806,8 @@ Paste the following into your new `passenger.conf` file and save:
     # Tell Apache and Passenger where your app's 'public' directory is
     DocumentRoot /opt/cartodb/public
     RailsEnv production
+    SetEnv RAILS_LOG_BASE_PATH = /var/log/carto
+    SetEnv RAILS_CONFIG_BASE_PATH = /etc/carto
     # Relax Apache security settings
     <Directory /opt/cartodb/public>
       AllowOverride all
@@ -783,6 +824,10 @@ Paste the following into your new `passenger.conf` file and save:
     # !!! Be sure to point DocumentRoot to 'public'!
     DocumentRoot /opt/cartodb/public
     RailsEnv production
+    # This will let CartoDB write all logs to /var/log/carto
+    SetEnv RAILS_LOG_BASE_PATH = /var/log/carto
+    # This will change CartoDB to read all configs from /etc/carto
+    SetEnv RAILS_CONFIG_BASE_PATH = /etc/carto
     PassengerSpawnMethod direct
 
     SSLEngine on
@@ -828,15 +873,13 @@ NameVirtualHost *:9090
     # this preserves original header and domain
     ProxyPreserveHost On
 
-    # hardcoded for now, need to fix
     ProxyPass / http://localhost:8080/
     ProxyPassReverse / http://localhost:8080/
-
 
 </VirtualHost>
 ```
 
-### q. Install Certbot to Use letsencrypt SSL Certificate (Optional) ###
+### r. Install Certbot to Use letsencrypt SSL Certificate (Optional) ###
 
 The EFF has set up free hosting for secure certificates with a large federation of top-tier web-hosting firms via [http://letsencrypt.org]. You can read more on their website about the service. We'll be using the apache instance of "certbot" to keep our ssl certificates fresh:
 
