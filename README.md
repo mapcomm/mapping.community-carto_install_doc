@@ -459,12 +459,20 @@ sudo make install
 
 The system wide GCC library from Centos 7 is incompatible with CartoDB MAP API. Therefore we will need to manually compile the library and make it available for later use. The minimum version of GCC is v5.1.0.
 
+First install prerequisites:
+
+```
+sudo yum install gmp gmp-devel mpfr mpft-devel libmpc libmpc-devel
+```
+
+The install GCC, from which we'll extract the library:
+
 ```
 cd ~/
 wget http://gnu.uberglobalmirror.com/gcc/gcc-5.1.0/gcc-5.1.0.tar.bz2
 tar -xjf gcc-5.1.0.tar.bz2
 cd gcc-5.1.0
-./configure
+./configure --disable-multilib
 make
 ```
 
@@ -475,11 +483,15 @@ At this point, we do not need to "make install" as we only need to copy the libr
 ```
 sudo cp ./prev-x86_64-unknown-linux-gnu/libstdc++-v3/src/.libs/libstdc++.so.6.0.21 /lib64/
 ```
+
 Update current symbolic link of the library
+
 ```
 sudo rm /lib64/libstdc++.so.6
 sudo ln -s /lib64/libstdc++.so.6.0.21 /lib64/libstdc++.so.6
 ```
+
+All done. Let's move on to begin installing CartoDB components:
 
 ### m. CartoDB Components ###
 
@@ -489,7 +501,8 @@ Download the editor code:
 
 ```
 cd /opt
-git clone --recursive https://github.com/CartoDB/cartodb.git
+sudo git clone --recursive https://github.com/CartoDB/cartodb.git
+sudo chown -R carto cartodb
 cd cartodb
 ```
 
@@ -510,13 +523,13 @@ Install dependencies
 
 ```bash
 sudo yum install ImageMagick unzip patch gdal-devel
-export PATH=$PATH:/usr/pgsql-9.5/bin/
+export PATH=$PATH:/usr/pgsql-9.5/bin/:/opt/rubies/ruby-2.2.3/bin
 RAILS_ENV=production bundle install --deployment --without development test
 npm install
 sudo env "PATH=$PATH" pip install --no-use-wheel -r python_requirements.txt --global-option=build_ext --global-option="-I/usr/include/gdal"
 ```
 
-> Reminder: environment name is used above. Also note that "bundle install" above will fail if "/usr/pgsql-9.5/bin" is not included in your $PATH statement. Best practices on CentOS suggest that your path should be modified using a script in /etc/profile.d.
+> Reminder: environment name is used above. Also note that "bundle install" above will fail if "/usr/pgsql-9.5/bin and "/opt/rubies/ruby-2.2.3/bin" is not included in your $PATH statement. Best practices on CentOS suggest that your path should be modified using a script in /etc/profile.d.
 
 Add the grunt command to the PATH:
 
