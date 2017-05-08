@@ -783,6 +783,11 @@ Install Passenger:
 sudo gem install passenger
 ```
 
+Set SELinux to permissive:
+```
+sudo setenforce 0
+```
+
 Run the Passenger Apache module installer:
 
 ```
