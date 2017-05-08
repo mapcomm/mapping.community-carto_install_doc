@@ -158,6 +158,8 @@ host    all             all             ::1/128                 ident
 #host    replication     postgres        ::1/128                 ident
 ```
 
+> Note: Be sure you substitute an ip address for your web server as indicated above "_webserver IP address_" and don't forget to include a "/32" after the address (this is the "netmask").
+
 Restart server for changes to take effect:
 
 ```
@@ -611,11 +613,13 @@ sudo nano /etc/hosts
 ```
 
 Add the following line:
+
 ```
 127.0.0.1   localhost.lan carto.mapping.community
 ```
 
 Create /etc/carto so we can edit all the config files in here
+
 ```
 sudo mkdir /etc/carto
 cd /etc/carto
@@ -623,6 +627,7 @@ ln -s /opt/cartodb/config
 ```
 
 Create /var/log/carto so we can put all the logs files in here
+
 ```
 sudo mkdir /var/log/carto
 ```
