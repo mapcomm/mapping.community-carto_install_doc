@@ -447,6 +447,7 @@ The Centos repository only provides GDAL v1.11.4 so we will need to install the 
 cd ~/
 wget http://download.osgeo.org/gdal/2.1.3/gdal-2.1.3.tar.gz
 tar -xzf gdal-2.1.3.tar.gz
+cd gdal-2.1.3
 ./configure --with-geos=yes --with-pg=/usr/pgsql-9.5/bin/pg_config --prefix=/usr
 make
 sudo make install
@@ -601,7 +602,7 @@ Add the following line:
 127.0.0.1   localhost.lan carto.mapping.community
 ```
 
-Create /etc/carto so we can edit all the config files here here
+Create /etc/carto so we can edit all the config files in here
 ```
 sudo mkdir /etc/carto
 cd /etc/carto
