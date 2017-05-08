@@ -456,7 +456,7 @@ sudo make install
 
 ### l. GCC Library
 
-The system wide GCC library from Centos 7 is incompatiable with CatoDB MAP API. Therefore we will need to manually compile the library and make it available for the later use. The minimum version of GCC is v5.1.0. 
+The system wide GCC library from Centos 7 is incompatible with CatoDB MAP API. Therefore we will need to manually compile the library and make it available for the later use. The minimum version of GCC is v5.1.0. 
 
 ```
 cd ~/
