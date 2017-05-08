@@ -592,6 +592,7 @@ Change the line starting with: `binary:           'which ogr2ogr2.1'` to: `binar
 Change the line starting with: `account_host:       'localhost.lan:3000'` to: `account_host:       'carto.mapping.community'`
 
 Make the following changes to the `sql_api` section of this file as below: 
+
 ```
   sql_api:
     private:
@@ -672,19 +673,45 @@ We need to modify the SQL-API configuration file so that the server will work wi
 nano /opt/CartoDB-SQL-API/config/environments/production.js
 ```
 
-Change the line `module.exports.node_host    = '127.0.0.1';` to `module.exports.node_host    = '';`
+Change the setting for `module.exports.node_host` to: 
 
-Change `module.exports.user_from_host` to `'^(.*)\\carto\\.mapping\\.community$'`
+```
+module.exports.node_host    = '';
+```
+
+Change the line starting with: `module.exports.user_from_host` to:
+
+```
+module.exports.user_from_host = '^(.*)\\.carto\\.mapping\\.community$';
+```
 
 > Note: hostname to change above!
 
-Change `module.exports.db_host` to `PostgresSQL server IP address`
+Change the setting for `module.exports.db_host` to your PostgreSQL server IP:
 
-Change `module.exports.db_port` to `5432`
+```
+module.exports.db_host      = 'PostgresSQL server IP address';
+```
 
-Change `module.exports.ogr2ogrCommand` to `'/usr/bin/ogr2ogr'`
+Change the setting for `module.exports.db_port` to:
 
-Change `allowedHosts` to `['carto.mapping.community']`
+```
+module.exports.db_port      = '5432';
+```
+
+
+Change the setting for `module.exports.ogr2ogrCommand` to:
+
+```
+module.exports.ogr2ogrCommand = '/usr/bin/ogr2ogr';
+```
+
+Change `allowedHosts` to use your domain name:
+
+```
+module.exports.oauth = {
+    allowedHosts: ['carto.mapping.community']
+```
 
 > Note: hostname to change above!
 
@@ -730,19 +757,52 @@ You need to make some crucial modifications to the windshaft configuration file:
 nano /opt/Windshaft-cartodb/config/environments/production.js
 ```
 
-Change the line `,host: '127.0.0.1'` to `,host: ''`
+Change the setting for `,host:`  to be empty, as below:
 
-Change the line `,user_from_host: '^(.*)\\.cartodb\\.com$'` to `,user_from_host: 'carto\\.mapping\\.community'`
+```
+var config = {
+    environment: 'production'
+    ,port: 8181
+    ,host: '' 
+```
 
-Change postgres host to `PostgresSQL server IP address`
+Change the setting for `,user_from_host` to reflect your hostname, formatted as follows:
 
-Change postgres port to `5432`
+```
+,user_from_host: 'carto\\.mapping\\.community'
+```
 
-Change endpoint url to `'http://carto.mapping.community:8080/api/v2/sql/job'`
+Change the setting under `,postgres` for host and port to reflect your PostgreSQL settings (as follows), substituting your IP for 'postgres server IP' below and `5432` for port:
 
-Change hostHeaderTemplate to `hostHeaderTemplate: '{{=it.username}}.carto.mapping.community'`
+```
+,postgres: {
+        // Parameters to pass to datasource plugin of mapnik
+        // See http://github.com/mapnik/mapnik/wiki/PostGIS
+        user: "publicuser",
+        password: "public",
+        host: 'postgres server IP',
+        port: 5432,
+```
+        
 
-Change cache_basedir to `cache_basedir: '/opt/cartodb/tile_assets/'`
+Under `,analysis` change the endpoint url to match your server url, using the following convention:
+
+```
+            endpoint: 'http://carto.mapping.community:8080/api/v2/sql/job'
+```
+ 
+and change the `hostHeaderTemplate`  in the same way:
+
+```
+            hostHeaderTemplate: '{{=it.username}}.carto.mapping.community'
+```
+
+Under `,millstone` change the setting for cache_basedir to
+
+```
+        cache_basedir: '/opt/cartodb/tile_assets/'
+```
+
 
 Save the changes you've made above to the windshaft configuration file and proceed. 
 
@@ -780,19 +840,28 @@ sudo yum install httpd
 Install Passenger:
 
 ```
-sudo gem install passenger
+sudo env "PATH=$PATH" gem install passenger
 ```
 
 Set SELinux to permissive:
+
 ```
 sudo setenforce 0
+```
+
+Install some dependencies:
+
+```
+sudo yum install libcurl-devel httpd-devel
 ```
 
 Run the Passenger Apache module installer:
 
 ```
-sudo passenger-install-apache2-module
+sudo env "PATH=$PATH" passenger-install-apache2-module
 ```
+
+The module installer will take you through a brief dialogue. You can just hit the enter key after each prompt to confirm that you are happy with the default selection, it will then compile and install passenger for apache.
 
 ### p. Generate self-signed SSL certificate
 
@@ -800,8 +869,7 @@ Because we're using https, we need to assign some secure certificates to our web
 
 ```
 sudo mkdir /etc/httpd/certs/ 
-sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/httpd/certs/OurKey.key
- -out /etc/httpd/certs/OurCert.crt
+sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/httpd/certs/OurKey.key -out /etc/httpd/certs/OurCert.crt
 ```
 
 ### q. Configure Apache/Passenger with virtualhost and reverse proxy
@@ -873,7 +941,7 @@ Paste the following into your new `passenger.conf` file and save:
 We'll need to create a separate configuration file to enable reverse proxy for the Carto SQL_API:
 
 ```
-nano sqlapi.conf
+sudo nano sqlapi.conf
 ```
 
 Paste the following into your new `sqlapi.conf` file and save:
