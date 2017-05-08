@@ -773,6 +773,7 @@ sudo setenforce 0
 Run the Passenger Apache module installer:
 
 ```
+sudo yum install libcurl-devel httpd-devel
 sudo passenger-install-apache2-module
 ```
 
@@ -802,8 +803,8 @@ Paste the following into your new `passenger.conf` file and save:
 ```
    LoadModule passenger_module /opt/rubies/ruby-2.2.3/lib/ruby/gems/2.2.0/gems/passenger-5.1.3/buildout/apache2/mod_passenger.so
    <IfModule mod_passenger.c>
-     PassengerRoot /opt/rubies/ruby-2.2.3/lib/ruby/gems/2.2.0/gems/passenger-5.1.3/
-     PassengerDefaultRuby /opt/rubies/ruby-2.2.3/bin
+     PassengerRoot /opt/rubies/ruby-2.2.3/lib/ruby/gems/2.2.0/gems/passenger-5.1.3
+     PassengerDefaultRuby /opt/rubies/ruby-2.2.3/bin/ruby
    </IfModule>
 
 <VirtualHost *:80>
