@@ -606,7 +606,7 @@ Create /etc/carto so we can edit all the config files in here
 ```
 sudo mkdir /etc/carto
 cd /etc/carto
-ln -s /opt/cartodb/config
+sudo ln -s /opt/cartodb/config
 ```
 
 Create /var/log/carto so we can put all the logs files in here
