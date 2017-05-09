@@ -631,6 +631,7 @@ Create /var/log/carto so we can put all the logs files in here
 
 ```
 sudo mkdir /var/log/carto
+sudo chmod 777 /var/log/carto
 ```
 
 ### n. CartoDB APIs
