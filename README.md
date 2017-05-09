@@ -943,6 +943,123 @@ curl localhost
 This should return:
 <html><body>You are being <a href="https://[yourURL]/login">redirected</a>.</body></html>
 
+#### Additional Configuration to do after the Carto stack is running ####
+###a. Create new user
+```
+cd /opt/cartodb
+RAILS_ENV=production bundle exec rake cartodb:db:create_user SUBDOMAIN='username' EMAIL='user@domain.com' PASSWORD='password'
+```
+> note: replace "username", email address, "password above
+
+###b. Activate Sync table
+Login to PostgresSQL server
+```
+sudo su
+su postgres
+psql carto_db_production
+
+UPDATE users SET sync_tables_enabled = t;
+
+\q
+exit
+exit
+```
+sync tables also require a script to run every 15 minutes, which will enqueue pending synchronizations (run this in the cartodb/ directory):
+```
+RAILS_ENV=production bundle exec rake cartodb:sync_tables
+```
+This command will need to be scheduled to run at a regular interval, i.e. every 15 minutes or so. Also, the environment should be changed in the command as necessary. Add to crontab like this:
+```
+*/15 * * * *    cd /opt/cartodb && RAILS_ENV=production bundle exec rake cartodb:sync_tables
+```
+
+###c. Enable builder for all users
+Login to PostgresSQL server
+```
+sudo su
+su postgres
+psql carto_db_production
+
+UPDATE users SET builder_enabled = t;
+
+\q
+exit
+exit
+```
+
+###d. systemd service for carto stack
+Add CartoDB-SQL-API to systemd service:
+```
+cd /etc/systemd/system
+sudo nano cartodb-sql.service
+```
+
+Edit the file and save:
+```
+[Service]
+ExecStart=/usr/bin/node /opt/CartoDB-SQL-API/app.js production
+Restart=always
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=CartoDB-SQL-API
+WorkingDirectory=/opt/CartoDB-SQL-API
+User=carto
+Group=carto
+Environment='NODE_ENV=production'
+
+[Install]
+WantedBy=multi-user.target
+```
+Start CartoDB-SQL-API
+```
+systemctl start cartodb-sql
+```
+Enable it to auto-startup at boot
+```
+systemctl enable cartodb-sql
+```
+
+Add Windshaft-cartodb to systemd service:
+```
+cd /etc/systemd/system
+sudo nano windshaft-cartodb.service
+```
+Edit the file and save:
+```
+[Service]
+ExecStart=/usr/bin/node /opt/Windshaft-cartodb/app.js production
+Restart=always
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=Windshaft-cartodb
+WorkingDirectory=/opt/Windshaft-cartodb
+User=carto
+Group=carto
+Environment='NODE_ENV=production'
+
+[Install]
+WantedBy=multi-user.target
+```
+Start CartoDB-SQL-API
+```
+systemctl start windshaft-cartodb
+```
+Enable it to auto-startup at boot
+```
+systemctl enable windshaft-cartodb
+```
+
+###e. Configure Redis Persistence
+We will need to enable AOF Persistence so Redis will store information that need to be persisted.
+```
+sudo nano /etc/redis/6379.conf
+```
+Change `appendonly no` to `appendonly yes`
+Restart redis
+```
+sudo systemctl restart redis.service
+```
+
 
 ## Notes
 
