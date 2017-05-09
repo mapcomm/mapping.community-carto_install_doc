@@ -983,7 +983,7 @@ sudo yum install python-certbot-apache
 Once Certbot is installed, run it and let it replace the existing self-signed certificate we created above:
 
 ```
-certbot --apache
+sudo certbot --apache
 ```
 
 #### **Start the Server \(to Test Out Functionality\)** ####
