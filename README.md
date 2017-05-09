@@ -897,8 +897,8 @@ Paste the following into your new `passenger.conf` file and save:
     # Tell Apache and Passenger where your app's 'public' directory is
     DocumentRoot /opt/cartodb/public
     RailsEnv production
-    SetEnv RAILS_LOG_BASE_PATH = /var/log/carto
-    SetEnv RAILS_CONFIG_BASE_PATH = /etc/carto
+    SetEnv RAILS_LOG_BASE_PATH /var/log/carto
+    SetEnv RAILS_CONFIG_BASE_PATH /etc/carto
     # Relax Apache security settings
     <Directory /opt/cartodb/public>
       AllowOverride all
