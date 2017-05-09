@@ -801,11 +801,6 @@ Paste the following into your new `passenger.conf` file and save:
 >Note: be sure you change DNS below to your own hostname
 
 ```
-   LoadModule passenger_module /opt/rubies/ruby-2.2.3/lib/ruby/gems/2.2.0/gems/passenger-5.1.3/buildout/apache2/mod_passenger.so
-   <IfModule mod_passenger.c>
-     PassengerRoot /opt/rubies/ruby-2.2.3/lib/ruby/gems/2.2.0/gems/passenger-5.1.3
-     PassengerDefaultRuby /opt/rubies/ruby-2.2.3/bin/ruby
-   </IfModule>
 
 <VirtualHost *:80>
     ServerName carto.mapping.community
