@@ -631,6 +631,7 @@ Create /var/log/carto so we can put all the logs files in here
 
 ```
 sudo mkdir /var/log/carto
+sudo chmod 777 /var/log/carto
 ```
 
 ### n. CartoDB APIs
@@ -916,9 +917,9 @@ Paste the following into your new `passenger.conf` file and save:
     DocumentRoot /opt/cartodb/public
     RailsEnv production
     # This will let CartoDB write all logs to /var/log/carto
-    SetEnv RAILS_LOG_BASE_PATH = /var/log/carto
+    SetEnv RAILS_LOG_BASE_PATH /var/log/carto
     # This will change CartoDB to read all configs from /etc/carto
-    SetEnv RAILS_CONFIG_BASE_PATH = /etc/carto
+    SetEnv RAILS_CONFIG_BASE_PATH /etc/carto
     PassengerSpawnMethod direct
 
     SSLEngine on
@@ -983,7 +984,7 @@ sudo yum install python-certbot-apache
 Once Certbot is installed, run it and let it replace the existing self-signed certificate we created above:
 
 ```
-certbot --apache
+sudo certbot --apache
 ```
 
 #### **Start the Server \(to Test Out Functionality\)** ####
