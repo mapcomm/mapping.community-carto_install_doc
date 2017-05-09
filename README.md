@@ -856,7 +856,10 @@ sudo yum install libcurl-devel httpd-devel
 ```
 
 Run the Passenger Apache module installer:
-
+```
+sudo yum install libcurl-devel httpd-devel
+sudo passenger-install-apache2-module
+```
 
 The module installer will take you through a brief dialogue. You can just hit the enter key after each prompt to confirm that you are happy with the default selection, it will then compile and install passenger for apache.
 
