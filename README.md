@@ -943,15 +943,15 @@ curl localhost
 This should return:
 <html><body>You are being <a href="https://[yourURL]/login">redirected</a>.</body></html>
 
-#### Additional Configuration to do after the Carto stack is running ####
-###a. Create new user
+# 3. Additional Configuration to do after the Carto stack is running ####
+### a. Create new user
 ```
 cd /opt/cartodb
 RAILS_ENV=production bundle exec rake cartodb:db:create_user SUBDOMAIN='username' EMAIL='user@domain.com' PASSWORD='password'
 ```
 > note: replace "username", email address, "password above
 
-###b. Activate Sync table
+### b. Activate Sync table
 Login to PostgresSQL server
 ```
 sudo su
@@ -973,7 +973,7 @@ This command will need to be scheduled to run at a regular interval, i.e. every 
 */15 * * * *    cd /opt/cartodb && RAILS_ENV=production bundle exec rake cartodb:sync_tables
 ```
 
-###c. Enable builder for all users
+### c. Enable builder for all users
 Login to PostgresSQL server
 ```
 sudo su
@@ -987,7 +987,7 @@ exit
 exit
 ```
 
-###d. systemd service for carto stack
+### d. systemd service for carto stack
 Add CartoDB-SQL-API to systemd service:
 ```
 cd /etc/systemd/system
@@ -1049,7 +1049,7 @@ Enable it to auto-startup at boot
 systemctl enable windshaft-cartodb
 ```
 
-###e. Configure Redis Persistence
+### e. Configure Redis Persistence
 We will need to enable AOF Persistence so Redis will store information that need to be persisted.
 ```
 sudo nano /etc/redis/6379.conf
