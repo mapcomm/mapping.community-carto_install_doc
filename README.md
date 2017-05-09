@@ -916,9 +916,9 @@ Paste the following into your new `passenger.conf` file and save:
     DocumentRoot /opt/cartodb/public
     RailsEnv production
     # This will let CartoDB write all logs to /var/log/carto
-    SetEnv RAILS_LOG_BASE_PATH = /var/log/carto
+    SetEnv RAILS_LOG_BASE_PATH /var/log/carto
     # This will change CartoDB to read all configs from /etc/carto
-    SetEnv RAILS_CONFIG_BASE_PATH = /etc/carto
+    SetEnv RAILS_CONFIG_BASE_PATH /etc/carto
     PassengerSpawnMethod direct
 
     SSLEngine on
