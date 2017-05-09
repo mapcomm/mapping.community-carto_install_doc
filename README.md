@@ -1055,6 +1055,7 @@ We will need to enable AOF Persistence so Redis will store information that need
 sudo nano /etc/redis/6379.conf
 ```
 Change `appendonly no` to `appendonly yes`
+
 Restart redis
 ```
 sudo systemctl restart redis.service
