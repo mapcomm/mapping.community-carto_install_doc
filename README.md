@@ -1145,7 +1145,7 @@ While you're in there, you may also want to edit a few other lines in `/opt/cart
 ```
 
 
-### d. systemd service for carto stack
+### d. systemd service for CartoDB-SQL-API
 
 Add CartoDB-SQL-API to systemd service:
 
@@ -1184,6 +1184,7 @@ Enable it to auto-startup at boot
 systemctl enable cartodb-sql
 ```
 
+### e. systemd service for Windshaft-cartodb
 Add Windshaft-cartodb to systemd service:
 
 ```
@@ -1210,18 +1211,69 @@ WantedBy=multi-user.target
 ```
 
 Start CartoDB-SQL-API
-
 ```
 systemctl start windshaft-cartodb
 ```
 
 Enable it to auto-startup at boot
-
 ```
 systemctl enable windshaft-cartodb
 ```
 
-### e. Configure Redis Persistence
+### f. systemd service for CartoDB Resque process
+Create a bash script
+```
+cd /opt/cartodb/script
+nano run_resque.sh
+```
+
+Edit and save the file as below:
+```
+#!/bin/sh
+
+RAILS_ENV=production /opt/rubies/ruby-2.2.3/bin/bundle exec /opt/cartodb/script/resque
+```
+
+Make the script executable
+```
+chmod 775 run_resque.sh
+```
+
+Add cartodb-resque to systemd service:
+```
+cd /etc/systemd/system
+sudo nano cartodb-resque.service
+```
+
+Edit the file and save:
+```
+[Service]
+ExecStart=/bin/sh /opt/cartodb/script/run_resque.sh
+Restart=always
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=cartodb-resque
+WorkingDirectory=/opt/cartodb
+User=carto
+Group=carto
+Environment='NODE_ENV=production'
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Start cartodb-resque
+```
+systemctl start cartodb-resque
+```
+
+Enable it to auto-startup at boot
+```
+systemctl enable cartodb-resque
+```
+
+
+### g. Configure Redis Persistence
 We will need to enable AOF Persistence so Redis will store information that need to be persisted.
 
 ```
