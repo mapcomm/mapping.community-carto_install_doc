@@ -456,6 +456,12 @@ sudo make install
 ```
 > Note: the two flags included above for 'configure' are very important. Make sure that GEOS support shows "yes" and that the install script is able to find pg_config and PostgresQL.
 
+If  you'd like to with with ESRI shapefiles in carto (which need to be packed in a zip file because there are multiple files), you should create a symlink to unzip:
+
+```
+sudo ln -s /usr/bin/unzip /usr/bin/unp
+```
+
 Make a symbolic link of the binary so Carto Editor can use it later on.
 ```
 ln -s /bin/ogr2ogr /bin/ogr2ogr2.1
@@ -1023,58 +1029,133 @@ curl localhost
 This should return:
 <html><body>You are being <a href="https://[yourURL]/login">redirected</a>.</body></html>
 
-# 3. Additional Configuration to do after the Carto stack is running ####
+You can also navigate in a web browser to your server URL and confirm that you see a pretty dark blue Carto login screen.
+
+The most likely culprit at this point if you're unable to connect to your new server is a firewall policy. To test whether your server is accessible try the following command from another desktop that should have access to the server:
+
+```bash
+telnet <server domain name> 443
+telnet <server domain name> 80
+```
+
+This command will try to set up an (unsuccessful) telnet session to your web server on the server ports http (80) and https (443). If you see something like the following, albeit with your server's IP address, your server is accessible:
+
+```
+$ telnet 147.188.126.125 443
+Trying 147.188.126.125...
+Connected to 147.188.126.125.
+Escape character is '^]'.
+```
+
+Your attempts to connect to the server should also register in the apache access logs, so you can use the command `sudo tail /var/log/httpd/access_log` to show the last few lines of your apache log. There should be a time stamped indication of your access attempts, something like:
+
+```
+<workstation IP address omitted> - - [09/May/2017:11:36:12 +0100] "GET /login HTTP/1.1" 200 3997 "https://carto.mapping.community/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/602.4.8 (KHTML, like Gecko) Version/10.0.3 Safari/602.4.8"
+```
+
+To look for problems, use the following commands to check relevant log files:
+
+```
+sudo tail /var/log/httpd/error_log
+sudo tail /var/log/carto/log/production.log
+```
+
+You may also want to turn off software firewalls to see if they're causing issues. On Centos this will be either:
+
+```
+systemctl stop firewalld
+systemctl stop iptables
+```
+
+You can take snippets of text from error messages to try and find some help with your configuration on stack exchange, a slack group, or the carto google group.
+
+Now hopefully you're up and running, there are a few steps still required to get user accounts created and open up features on your new server:
+
+# 3. Additional Configuration to do after the Carto stack is running #
+
 ### a. Create new user
+
 ```
 cd /opt/cartodb
+RAILS_ENV=production bundle exec rake cartodb:db:create_publicuser
 RAILS_ENV=production bundle exec rake cartodb:db:create_user SUBDOMAIN='username' EMAIL='user@domain.com' PASSWORD='password'
 ```
-> note: replace "username", email address, "password above
 
-### b. Activate Sync table
+> note: replace "username", "email address", and "password" above with your preferences.
+
+### b. Enable builder for all users
+
 Login to PostgresSQL server
+
 ```
 sudo su
 su postgres
 psql carto_db_production
 
-UPDATE users SET sync_tables_enabled = t;
+UPDATE users SET builder_enabled = 't';
 
 \q
 exit
 exit
 ```
+
+
+### c. Activate "Sync Tables" ###
+
+This feature enables you to regularly synchronise a table in carto with another external source. It's a fantastic feature and very useful if you work with other data sources. To enable it:
+
+As above begin by logging int the PostgresSQL server
+
+```
+sudo su
+su postgres
+psql carto_db_production
+
+UPDATE users SET sync_tables_enabled = 't';
+
+\q
+exit
+exit
+```
+
 sync tables also require a script to run every 15 minutes, which will enqueue pending synchronizations (run this in the cartodb/ directory):
+
 ```
 RAILS_ENV=production bundle exec rake cartodb:sync_tables
 ```
+
 This command will need to be scheduled to run at a regular interval, i.e. every 15 minutes or so. Also, the environment should be changed in the command as necessary. Add to crontab like this:
+
 ```
-*/15 * * * *    cd /opt/cartodb && RAILS_ENV=production bundle exec rake cartodb:sync_tables
+*/15 * * * *    cd /opt/cartodb && RAILS_ENV=production /opt/rubies/ruby-2.2.3/bin/bundle exec rake cartodb:sync_tables
 ```
 
-### c. Enable builder for all users
-Login to PostgresSQL server
-```
-sudo su
-su postgres
-psql carto_db_production
+You may also want to enable specific external data sources, like arcgis. To do this, edit `/opt/cartodb/config/app_config.yml` and modify the following lines:
 
-UPDATE users SET builder_enabled = t;
-
-\q
-exit
-exit
 ```
+  datasources:
+    arcgis_enabled: true
+```
+
+While you're in there, you may also want to edit a few other lines in `/opt/cartodb/config/app_config.yml` for instance, the email address to be used for outbound messages:
+
+```
+  mailer:
+    from: 'from name <email@address.com>'
+```
+
 
 ### d. systemd service for carto stack
+
 Add CartoDB-SQL-API to systemd service:
+
 ```
 cd /etc/systemd/system
 sudo nano cartodb-sql.service
 ```
 
-Edit the file and save:
+Edit (or create) the file and save:
+
 ```
 [Service]
 ExecStart=/usr/bin/node /opt/CartoDB-SQL-API/app.js production
@@ -1090,21 +1171,28 @@ Environment='NODE_ENV=production'
 [Install]
 WantedBy=multi-user.target
 ```
+
 Start CartoDB-SQL-API
+
 ```
 systemctl start cartodb-sql
 ```
+
 Enable it to auto-startup at boot
+
 ```
 systemctl enable cartodb-sql
 ```
 
 Add Windshaft-cartodb to systemd service:
+
 ```
 cd /etc/systemd/system
 sudo nano windshaft-cartodb.service
 ```
+
 Edit the file and save:
+
 ```
 [Service]
 ExecStart=/usr/bin/node /opt/Windshaft-cartodb/app.js production
@@ -1120,25 +1208,32 @@ Environment='NODE_ENV=production'
 [Install]
 WantedBy=multi-user.target
 ```
+
 Start CartoDB-SQL-API
+
 ```
 systemctl start windshaft-cartodb
 ```
+
 Enable it to auto-startup at boot
+
 ```
 systemctl enable windshaft-cartodb
 ```
 
 ### e. Configure Redis Persistence
 We will need to enable AOF Persistence so Redis will store information that need to be persisted.
+
 ```
 sudo nano /etc/redis/6379.conf
 ```
+
 Change `appendonly no` to `appendonly yes`
 
 Restart redis
+
 ```
-sudo systemctl restart redis.service
+sudo systemctl restart redis_6379
 ```
 
 
