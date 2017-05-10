@@ -454,7 +454,6 @@ cd gdal-2.1.3
 make
 sudo make install
 ```
-
 > Note: the two flags included above for 'configure' are very important. Make sure that GEOS support shows "yes" and that the install script is able to find pg_config and PostgresQL.
 
 If  you'd like to with with ESRI shapefiles in carto (which need to be packed in a zip file because there are multiple files), you should create a symlink to unzip:
@@ -463,6 +462,10 @@ If  you'd like to with with ESRI shapefiles in carto (which need to be packed in
 sudo ln -s /usr/bin/unzip /usr/bin/unp
 ```
 
+Make a symbolic link of the binary so Carto Editor can use it later on.
+```
+ln -s /bin/ogr2ogr /bin/ogr2ogr2.1
+```
 
 ### l. GCC Library
 
@@ -594,8 +597,6 @@ Change the line starting with: `vizjson_cache_domains: ['.localhost.lan']` to `#
 
 (JK Note: next line unsure - may need to revert this to a side loaded configuration, cf. original Readme.md from May, content under "Now finally edit the hosts file to include `localhost.lan` and whatever your server URL will be")
 
-Change the line starting with: `binary:           'which ogr2ogr2.1'` to: `binary:           'which ogr2ogr'`
-
 Change the line starting with: `account_host:       'localhost.lan:3000'` to: `account_host:       'carto.mapping.community'`
 
 Make the following changes to the `sql_api` section of this file as below: 
@@ -705,13 +706,6 @@ Change the setting for `module.exports.db_port` to:
 
 ```
 module.exports.db_port      = '5432';
-```
-
-
-Change the setting for `module.exports.ogr2ogrCommand` to:
-
-```
-module.exports.ogr2ogrCommand = '/usr/bin/ogr2ogr';
 ```
 
 Change `allowedHosts` to use your domain name:
@@ -1151,7 +1145,7 @@ While you're in there, you may also want to edit a few other lines in `/opt/cart
 ```
 
 
-### d. systemd service for carto stack
+### d. systemd service for CartoDB-SQL-API
 
 Add CartoDB-SQL-API to systemd service:
 
@@ -1190,6 +1184,7 @@ Enable it to auto-startup at boot
 systemctl enable cartodb-sql
 ```
 
+### e. systemd service for Windshaft-cartodb
 Add Windshaft-cartodb to systemd service:
 
 ```
@@ -1216,18 +1211,69 @@ WantedBy=multi-user.target
 ```
 
 Start CartoDB-SQL-API
-
 ```
 systemctl start windshaft-cartodb
 ```
 
 Enable it to auto-startup at boot
-
 ```
 systemctl enable windshaft-cartodb
 ```
 
-### e. Configure Redis Persistence
+### f. systemd service for CartoDB Resque process
+Create a bash script
+```
+cd /opt/cartodb/script
+nano run_resque.sh
+```
+
+Edit and save the file as below:
+```
+#!/bin/sh
+
+RAILS_ENV=production /opt/rubies/ruby-2.2.3/bin/bundle exec /opt/cartodb/script/resque
+```
+
+Make the script executable
+```
+chmod 775 run_resque.sh
+```
+
+Add cartodb-resque to systemd service:
+```
+cd /etc/systemd/system
+sudo nano cartodb-resque.service
+```
+
+Edit the file and save:
+```
+[Service]
+ExecStart=/bin/sh /opt/cartodb/script/run_resque.sh
+Restart=always
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=cartodb-resque
+WorkingDirectory=/opt/cartodb
+User=carto
+Group=carto
+Environment='NODE_ENV=production'
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Start cartodb-resque
+```
+systemctl start cartodb-resque
+```
+
+Enable it to auto-startup at boot
+```
+systemctl enable cartodb-resque
+```
+
+
+### g. Configure Redis Persistence
 We will need to enable AOF Persistence so Redis will store information that need to be persisted.
 
 ```
