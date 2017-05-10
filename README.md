@@ -6,6 +6,13 @@ CartoDB can use a range of resources. For our purposes, which involve installing
 
 We set up a local PostgreSQL server with PostGIS extensions in order to test the size of these datasets and projected a maximum use for year 1 of this server of 500GB. For a whole host of best-practice reasons, we've provisioned this setup with a web server and PostGIS server hosted separately \(but on the same LAN\). We will run a parallel set of servers in a development platform which will mirror the production setup.
 
+## Firewall Configuration ##
+
+If you're working with virtual servers that will be behind a firewall, this installation guide will require the following configuration to work. For the sake of this example, "Server01" is the web server and "Server02" is the postgresql server.
+
+- Server01 should be open to inbound (http) traffic on ports 80, 443, 9090 for any IP address
+- Server02 should be open to inbound (postgresql) traffic on port 5432 from Server01
+
 # 2. Installation
 
 ### A Few Notes on Converting "CartoDB Ubuntu" to Centos...
