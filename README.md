@@ -454,8 +454,12 @@ cd gdal-2.1.3
 make
 sudo make install
 ```
-
 > Note: the two flags included above for 'configure' are very important. Make sure that GEOS support shows "yes" and that the install script is able to find pg_config and PostgresQL.
+
+Make a symbolic link of the binary so Carto Editor can use it later on.
+```
+ln -s /bin/ogr2ogr /bin/ogr2ogr2.1
+```
 
 ### l. GCC Library
 
@@ -587,8 +591,6 @@ Change the line starting with: `vizjson_cache_domains: ['.localhost.lan']` to `#
 
 (JK Note: next line unsure - may need to revert this to a side loaded configuration, cf. original Readme.md from May, content under "Now finally edit the hosts file to include `localhost.lan` and whatever your server URL will be")
 
-Change the line starting with: `binary:           'which ogr2ogr2.1'` to: `binary:           'which ogr2ogr'`
-
 Change the line starting with: `account_host:       'localhost.lan:3000'` to: `account_host:       'carto.mapping.community'`
 
 Make the following changes to the `sql_api` section of this file as below: 
@@ -698,13 +700,6 @@ Change the setting for `module.exports.db_port` to:
 
 ```
 module.exports.db_port      = '5432';
-```
-
-
-Change the setting for `module.exports.ogr2ogrCommand` to:
-
-```
-module.exports.ogr2ogrCommand = '/usr/bin/ogr2ogr';
 ```
 
 Change `allowedHosts` to use your domain name:
