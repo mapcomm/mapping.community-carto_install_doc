@@ -356,7 +356,7 @@ tar xzvf node-v* && cd node-v*
 Configure and compile the software:
 
 ```
-./configure
+./configure --prefix=/usr
 make
 ```
 
