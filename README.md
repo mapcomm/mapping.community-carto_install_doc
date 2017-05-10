@@ -363,7 +363,7 @@ tar xzvf node-v* && cd node-v*
 Configure and compile the software:
 
 ```
-./configure
+./configure --prefix=/usr
 make
 ```
 
@@ -1238,6 +1238,8 @@ Edit and save the file as below:
 ```
 #!/bin/sh
 
+export PATH=$PATH:/opt/rubies/ruby-2.2.3/bin
+cd /opt/cartodb
 RAILS_ENV=production /opt/rubies/ruby-2.2.3/bin/bundle exec /opt/cartodb/script/resque
 ```
 
