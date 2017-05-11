@@ -622,6 +622,28 @@ Make the following changes to the `sql_api` section of this file as below:
       port:       9090
 ```
 
+Make the following changes to the `tiler` section of this file as below:
+```
+  tiler:
+    filter: 'mapnik'
+    internal:
+      protocol:      'https'
+      domain:        'carto.mapping.community'
+      port:          '9191'
+      host:          'carto.mapping.community'
+      verifycert:     false
+    private:
+      protocol:      'https'
+      domain:        'carto.mapping.community'
+      port:          '9191'
+      verifycert:     false
+    public:
+      protocol:      'https'
+      domain:        'carto.mapping.community'
+      port:          '9191'
+      verifycert:     false
+```
+
 Save the app_config.yml file and then edit the hosts file to include `localhost.lan` and whatever your server URL will be:
 
 ```
@@ -975,6 +997,38 @@ NameVirtualHost *:9090
 
     ProxyPass / http://localhost:8080/
     ProxyPassReverse / http://localhost:8080/
+
+</VirtualHost>
+```
+
+Create a separate configuration file to enable reverse proxy for the Windshaft-carto:
+```
+sudo nano mapapi.conf
+```
+>Note: be sure you change DNS below to your own hostname
+Paste the following into your new `mapapi.conf` file and save:
+```
+Listen 9191
+
+NameVirtualHost *:9191
+
+<VirtualHost *:9191>
+    SSLProxyEngine On 
+    ServerName cartodb.mapping.community
+
+
+    SSLEngine on
+
+    SSLCertificateFile /etc/httpd/certs/OurCert.crt
+    SSLCertificateKeyFile /etc/httpd/certs/OurKey.key
+
+    # this preserves original header and domain
+    ProxyPreserveHost On
+
+    # hardcoded for now, need to fix
+    ProxyPass / http://localhost:8181/
+    ProxyPassReverse / http://localhost:8181/
+
 
 </VirtualHost>
 ```
