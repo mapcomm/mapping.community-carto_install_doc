@@ -1014,7 +1014,7 @@ NameVirtualHost *:9191
 
 <VirtualHost *:9191>
     SSLProxyEngine On 
-    ServerName cartodb.mapping.community
+    ServerName carto.mapping.community
 
 
     SSLEngine on
