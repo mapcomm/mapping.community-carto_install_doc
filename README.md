@@ -6,6 +6,13 @@ CartoDB can use a range of resources. For our purposes, which involve installing
 
 We set up a local PostgreSQL server with PostGIS extensions in order to test the size of these datasets and projected a maximum use for year 1 of this server of 500GB. For a whole host of best-practice reasons, we've provisioned this setup with a web server and PostGIS server hosted separately \(but on the same LAN\). We will run a parallel set of servers in a development platform which will mirror the production setup.
 
+## Firewall Configuration ##
+
+If you're working with virtual servers that will be behind a firewall, this installation guide will require the following configuration to work. For the sake of this example, "Server01" is the web server and "Server02" is the postgresql server.
+
+- Server01 should be open to inbound (http) traffic on ports 80, 443, 9090 for any IP address
+- Server02 should be open to inbound (postgresql) traffic on port 5432 from Server01
+
 # 2. Installation
 
 ### A Few Notes on Converting "CartoDB Ubuntu" to Centos...
@@ -157,6 +164,8 @@ host    all             all             ::1/128                 ident
 #host    replication     postgres        127.0.0.1/32            ident
 #host    replication     postgres        ::1/128                 ident
 ```
+
+> Note: Be sure you substitute an ip address for your web server as indicated above "_webserver IP address_" and don't forget to include a "/32" after the address (this is the "netmask").
 
 Restart server for changes to take effect:
 
@@ -338,7 +347,7 @@ If you want to allow outside access to the redis server \(which is not necessary
 
 As above, it is easier just to install Node.js from source so you can be sure you have the right version installed. On your server, use wget and paste the link that you copied in order to download the archive file:
 
-> Note: at the time of writing, we will need nodeJS 6.9.2 to work with Windshaft-cartodb.
+> Note: at the time of writing, we will need nodeJS v6.9.2 to work with Windshaft-cartodb.
 
 ```
 cd ~/
@@ -354,7 +363,7 @@ tar xzvf node-v* && cd node-v*
 Configure and compile the software:
 
 ```
-./configure
+./configure --prefix=/usr
 make
 ```
 
@@ -397,137 +406,7 @@ You're going to need to login to this new user account so that file permissions 
 su carto
 ```
 
-### j. CartoDB APIs
-
-All the hard work above has paid off, as you have a working server environment that will provide the basis for an installation of the Carto platform:
-
-#### SQL API:
-
-Download API:
-
-> Note, here and below we need to copy all the core cartodb files into the system-wise web server paths so that they aren't being served out of our home directory. We're going with /opt for our files here ([to see why, read here](http://serverfault.com/questions/96416/should-i-install-linux-applications-in-var-or-opt)):
-
-```
-cd /opt
-sudo git clone git://github.com/CartoDB/CartoDB-SQL-API.git
-sudo chown -R carto CartoDB-SQL-API
-cd /opt/CartoDB-SQL-API
-git checkout master
-```
-
-Install npm dependencies
-
-```
-npm install
-```
-
-Create your configuration files from the templates provided in the config directory. Note, the name of the filename of the configuration must be the same than the environment you are going to use to start the service.
-
-> Note: departing from the standard Carto instruction set, we've specified the environment as production, because we are running two parallel environments \(yep, 4 virtual servers\). Do make a note of the fact that the name of the environment will crop up increasingly often further below, so best to do a word search for "production" and substitute as necessary if you want to run a "development" environment.
-
-```
-cp config/environments/production.js.example config/environments/production.js
-```
-
-Note: As you'll already know, our project is hosted at carto.mapping.community. You'll want to substitute every instance of "mapping.community" in the prescribed configuration changes here and below for your own DNS name otherwise the server will definitely not work.
-
-We need to modify the SQL-API configuration file so that the server will work with our DNS name:
-
-```
-nano /opt/CartoDB-SQL-API/config/environments/production.js
-```
-
-Change the line `module.exports.node_host    = '127.0.0.1';` to `module.exports.node_host    = '';`
-
-Change `module.exports.user_from_host` to `'^(.*)\\carto\\.mapping\\.community$'`
-
-> Note: hostname to change above!
-
-Change `module.exports.db_host` to `PostgresSQL server IP address`
-
-Change `module.exports.db_port` to `5432`
-
-Change `module.exports.ogr2ogrCommand` to `'/usr/bin/ogr2ogr'`
-
-Change `allowedHosts` to `['carto.mapping.community']`
-
-> Note: hostname to change above!
-
-Now, try to start the service to confirm that it is installed correctly (note, again the second parameter is always the environment if the service. Remember to use the same you used in the configuration).
-
-```
-node app.js production
-```
-
-> Reminder: see note a few lines above re: "production" here which is "development" in carto documentation.
-
-#### MAPS API:
-
-Download the API:
-
-```
-cd /opt
-sudo git clone git://github.com/CartoDB/Windshaft-cartodb.git
-sudo chown -R carto Windshaft-cartodb
-cd Windshaft-cartodb
-git checkout master
-```
-
-Install npm dependencies:
-
-```
-npm install
-```
-
-Create configuration. The name of the filename of the configuration must be the same than the environment you are going to use to start the service. Let’s assume it’s production
-
-> Reminder: environnment name below \(as noted above\)!
-
-```
-cp config/environments/production.js.example config/environments/production.js
-```
-
-You need to make some crucial modifications to the windshaft configuration file:
-
-> Reminder: specific DNS settings below!
-
-```
-nano /opt/Windshaft-cartodb/config/environments/production.js
-```
-
-Change the line `,host: '127.0.0.1'` to `,host: ''`
-
-Change the line `,user_from_host: '^(.*)\\.cartodb\\.com$'` to `,user_from_host: 'carto\\.mapping\\.community'`
-
-Change postgres host to `PostgresSQL server IP address`
-
-Change postgres port to `5432`
-
-Change endpoint url to `'http://carto.mapping.community:8080/api/v2/sql/job'`
-
-Change hostHeaderTemplate to `hostHeaderTemplate: '{{=it.username}}.carto.mapping.community'`
-
-Change cache_basedir to `cache_basedir: '/opt/cartodb/tile_assets/'`
-
-Save the changes you've made above to the windshaft configuration file and proceed. 
-
-Now, create the cache_basedir folder if it doesn't exist: 
-
-```bash
-mkdir /opt/cartodb/tile_assets/
-```
-
-Start the service to check if it is installed correctly. The second parameter is always the environment of the service. Remember to use the same you used in the configuration.
-
-```bash
-node app.js production
-```
-
-> Reminder environnment name above \(as noted above\)! 
-
-If this step fails saying log folder not found, you may need to manually create it, e.g. `mkdir /opt/Windshaft-cartodb/logs`
-
-### k. Ruby
+### j. Ruby
 
 Download ruby-install. Ruby-install is a script that makes ruby install easier. It’s not needed to get ruby installed but it helps in the process.
 
@@ -569,7 +448,7 @@ Install compass. It will be needed later on by CartoDB’s editor
 sudo env "PATH=$PATH" gem install compass
 ```
 
-### l. GDAL 2.1.3
+### k. GDAL 2.1.3
 
 The Centos repository only provides GDAL v1.11.4 so we will need to install the latest GDAL v2.1.3 from source. As we've noted above, Carto uses two versions of GDAL in parallel, in order to borrow some features that were reintroduced in GDAL 2.x. Our installation here will 
 
@@ -577,12 +456,61 @@ The Centos repository only provides GDAL v1.11.4 so we will need to install the 
 cd ~/
 wget http://download.osgeo.org/gdal/2.1.3/gdal-2.1.3.tar.gz
 tar -xzf gdal-2.1.3.tar.gz
+cd gdal-2.1.3
 ./configure --with-geos=yes --with-pg=/usr/pgsql-9.5/bin/pg_config --prefix=/usr
 make
 sudo make install
 ```
-
 > Note: the two flags included above for 'configure' are very important. Make sure that GEOS support shows "yes" and that the install script is able to find pg_config and PostgresQL.
+
+If  you'd like to with with ESRI shapefiles in carto (which need to be packed in a zip file because there are multiple files), you should create a symlink to unzip:
+
+```
+sudo ln -s /usr/bin/unzip /usr/bin/unp
+```
+
+Make a symbolic link of the binary so Carto Editor can use it later on.
+```
+ln -s /bin/ogr2ogr /bin/ogr2ogr2.1
+```
+
+### l. GCC Library
+
+The system wide GCC library from Centos 7 is incompatible with CartoDB MAP API. Therefore we will need to manually compile the library and make it available for later use. The minimum version of GCC is v5.1.0.
+
+First install prerequisites:
+
+```
+sudo yum install gmp gmp-devel mpfr mpft-devel libmpc libmpc-devel
+```
+
+The install GCC, from which we'll extract the library:
+
+```
+cd ~/
+wget http://gnu.uberglobalmirror.com/gcc/gcc-5.1.0/gcc-5.1.0.tar.bz2
+tar -xjf gcc-5.1.0.tar.bz2
+cd gcc-5.1.0
+./configure --disable-multilib
+make
+```
+
+> Note: the compile will take a while as there are huge number of objects to run through.
+
+At this point, we do not need to "make install" as we only need to copy the library file (libstdc++.so.6.0.21) to the system /lib64 folder
+
+```
+sudo cp ./prev-x86_64-unknown-linux-gnu/libstdc++-v3/src/.libs/libstdc++.so.6.0.21 /lib64/
+```
+
+Update current symbolic link of the library
+
+```
+sudo rm /lib64/libstdc++.so.6
+sudo ln -s /lib64/libstdc++.so.6.0.21 /lib64/libstdc++.so.6
+```
+
+All done. Let's move on to begin installing CartoDB components:
 
 ### m. CartoDB Components ###
 
@@ -592,7 +520,8 @@ Download the editor code:
 
 ```
 cd /opt
-git clone --recursive https://github.com/CartoDB/cartodb.git
+sudo git clone --recursive https://github.com/CartoDB/cartodb.git
+sudo chown -R carto cartodb
 cd cartodb
 ```
 
@@ -613,13 +542,13 @@ Install dependencies
 
 ```bash
 sudo yum install ImageMagick unzip patch gdal-devel
-export PATH=$PATH:/usr/pgsql-9.5/bin/
+export PATH=$PATH:/usr/pgsql-9.5/bin/:/opt/rubies/ruby-2.2.3/bin
 RAILS_ENV=production bundle install --deployment --without development test
 npm install
 sudo env "PATH=$PATH" pip install --no-use-wheel -r python_requirements.txt --global-option=build_ext --global-option="-I/usr/include/gdal"
 ```
 
-> Reminder: environment name is used above. Also note that "bundle install" above will fail if "/usr/pgsql-9.5/bin" is not included in your $PATH statement. Best practices on CentOS suggest that your path should be modified using a script in /etc/profile.d.
+> Reminder: environment name is used above. Also note that "bundle install" above will fail if "/usr/pgsql-9.5/bin and "/opt/rubies/ruby-2.2.3/bin" is not included in your $PATH statement. Best practices on CentOS suggest that your path should be modified using a script in /etc/profile.d.
 
 Add the grunt command to the PATH:
 
@@ -675,11 +604,10 @@ Change the line starting with: `vizjson_cache_domains: ['.localhost.lan']` to `#
 
 (JK Note: next line unsure - may need to revert this to a side loaded configuration, cf. original Readme.md from May, content under "Now finally edit the hosts file to include `localhost.lan` and whatever your server URL will be")
 
-Change the line starting with: `binary:           'which ogr2ogr2.1'` to: `binary:           'which ogr2ogr'`
-
 Change the line starting with: `account_host:       'localhost.lan:3000'` to: `account_host:       'carto.mapping.community'`
 
 Make the following changes to the `sql_api` section of this file as below: 
+
 ```
   sql_api:
     private:
@@ -701,11 +629,210 @@ sudo nano /etc/hosts
 ```
 
 Add the following line:
+
 ```
 127.0.0.1   localhost.lan carto.mapping.community
 ```
 
-### n. Install Apache and Passenger ###
+Create /etc/carto so we can edit all the config files in here
+
+```
+sudo mkdir /etc/carto
+cd /etc/carto
+sudo ln -s /opt/cartodb/config
+```
+
+Create /var/log/carto so we can put all the logs files in here
+
+```
+sudo mkdir /var/log/carto
+sudo chmod 777 /var/log/carto
+```
+
+### n. CartoDB APIs
+
+All the hard work above has paid off, as you have a working server environment that will provide the basis for an installation of the Carto platform:
+
+#### SQL API:
+
+Download API:
+
+> Note, here and below we need to copy all the core cartodb files into the system-wise web server paths so that they aren't being served out of our home directory. We're going with /opt for our files here ([to see why, read here](http://serverfault.com/questions/96416/should-i-install-linux-applications-in-var-or-opt)):
+
+```
+cd /opt
+sudo git clone git://github.com/CartoDB/CartoDB-SQL-API.git
+sudo chown -R carto CartoDB-SQL-API
+cd /opt/CartoDB-SQL-API
+git checkout master
+```
+
+Install npm dependencies
+
+```
+npm install
+```
+
+Create your configuration files from the templates provided in the config directory. Note, the name of the filename of the configuration must be the same than the environment you are going to use to start the service.
+
+> Note: departing from the standard Carto instruction set, we've specified the environment as production, because we are running two parallel environments \(yep, 4 virtual servers\). Do make a note of the fact that the name of the environment will crop up increasingly often further below, so best to do a word search for "production" and substitute as necessary if you want to run a "development" environment.
+
+```
+cp config/environments/production.js.example config/environments/production.js
+```
+
+Note: As you'll already know, our project is hosted at carto.mapping.community. You'll want to substitute every instance of "mapping.community" in the prescribed configuration changes here and below for your own DNS name otherwise the server will definitely not work.
+
+We need to modify the SQL-API configuration file so that the server will work with our DNS name:
+
+```
+nano /opt/CartoDB-SQL-API/config/environments/production.js
+```
+
+Change the setting for `module.exports.node_host` to: 
+
+```
+module.exports.node_host    = '';
+```
+
+Change the line starting with: `module.exports.user_from_host` to:
+
+```
+module.exports.user_from_host = '^(.*)\\.carto\\.mapping\\.community$';
+```
+
+> Note: hostname to change above!
+
+Change the setting for `module.exports.db_host` to your PostgreSQL server IP:
+
+```
+module.exports.db_host      = 'PostgresSQL server IP address';
+```
+
+Change the setting for `module.exports.db_port` to:
+
+```
+module.exports.db_port      = '5432';
+```
+
+Change `allowedHosts` to use your domain name:
+
+```
+module.exports.oauth = {
+    allowedHosts: ['carto.mapping.community']
+```
+
+> Note: hostname to change above!
+
+Now, try to start the service to confirm that it is installed correctly (note, again the second parameter is always the environment if the service. Remember to use the same you used in the configuration).
+
+```
+node app.js production
+```
+
+> Reminder: see note a few lines above re: "production" here which is "development" in carto documentation.
+
+#### MAPS API:
+
+Download the API:
+
+```
+cd /opt
+sudo git clone git://github.com/CartoDB/Windshaft-cartodb.git
+sudo chown -R carto Windshaft-cartodb
+cd Windshaft-cartodb
+git checkout master
+```
+
+Install npm dependencies:
+
+```
+npm install
+```
+
+Create configuration. The name of the filename of the configuration must be the same than the environment you are going to use to start the service. Let’s assume it’s production
+
+> Reminder: environnment name below \(as noted above\)!
+
+```
+cp config/environments/production.js.example config/environments/production.js
+```
+
+You need to make some crucial modifications to the windshaft configuration file:
+
+> Reminder: specific DNS settings below!
+
+```
+nano /opt/Windshaft-cartodb/config/environments/production.js
+```
+
+Change the setting for `,host:`  to be empty, as below:
+
+```
+var config = {
+    environment: 'production'
+    ,port: 8181
+    ,host: '' 
+```
+
+Change the setting for `,user_from_host` to reflect your hostname, formatted as follows:
+
+```
+,user_from_host: 'carto\\.mapping\\.community'
+```
+
+Change the setting under `,postgres` for host and port to reflect your PostgreSQL settings (as follows), substituting your IP for 'postgres server IP' below and `5432` for port:
+
+```
+,postgres: {
+        // Parameters to pass to datasource plugin of mapnik
+        // See http://github.com/mapnik/mapnik/wiki/PostGIS
+        user: "publicuser",
+        password: "public",
+        host: 'postgres server IP',
+        port: 5432,
+```
+        
+
+Under `,analysis` change the endpoint url to match your server url, using the following convention:
+
+```
+            endpoint: 'http://carto.mapping.community:8080/api/v2/sql/job'
+```
+ 
+and change the `hostHeaderTemplate`  in the same way:
+
+```
+            hostHeaderTemplate: '{{=it.username}}.carto.mapping.community'
+```
+
+Under `,millstone` change the setting for cache_basedir to
+
+```
+        cache_basedir: '/opt/cartodb/tile_assets/'
+```
+
+
+Save the changes you've made above to the windshaft configuration file and proceed. 
+
+Now, create the cache_basedir folder if it doesn't exist: 
+
+```bash
+mkdir /opt/cartodb/tile_assets/
+```
+
+Start the service to check if it is installed correctly. The second parameter is always the environment of the service. Remember to use the same you used in the configuration.
+
+```bash
+node app.js production
+```
+
+> Reminder environnment name above \(as noted above\)! 
+
+If this step fails saying log folder not found, you may need to manually create it, e.g. `mkdir /opt/Windshaft-cartodb/logs`
+
+
+### o. Install Apache and Passenger ###
 
 Now we need a web server which we'll use with passenger to connect to the Carto rails server. NGINX is what Carto uses for their production servers, but we've gone with Apache for the sake of convenience. There are some indications that performance is better for high-volume installations using NGINX, so that's the main reason to defer to the alternative.
 
@@ -722,26 +849,39 @@ sudo yum install httpd
 Install Passenger:
 
 ```
-sudo gem install passenger
+sudo env "PATH=$PATH" gem install passenger
+```
+
+Set SELinux to permissive:
+
+```
+sudo setenforce 0
+```
+
+Install some dependencies:
+
+```
+sudo yum install libcurl-devel httpd-devel
 ```
 
 Run the Passenger Apache module installer:
-
 ```
+sudo yum install libcurl-devel httpd-devel
 sudo passenger-install-apache2-module
 ```
 
-### o. Generate self-signed SSL certificate
+The module installer will take you through a brief dialogue. You can just hit the enter key after each prompt to confirm that you are happy with the default selection, it will then compile and install passenger for apache.
+
+### p. Generate self-signed SSL certificate
 
 Because we're using https, we need to assign some secure certificates to our web server. Note, you should strongly resist any suggestions that you need to pay for https certificates. There is absolutely no reason to pay a Certificate authority for your certificates when perfectly secure and respected services like letsencrypt.com exist! We'll start with self-signed certificates and then go on to install letsencrypt certificates which will be automatically renewed using certbot below:
 
 ```
 sudo mkdir /etc/httpd/certs/ 
-sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/httpd/certs/OurKey.key
- -out /etc/httpd/certs/OurCert.crt
+sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/httpd/certs/OurKey.key -out /etc/httpd/certs/OurCert.crt
 ```
 
-### p. Configure Apache/Passenger with virtualhost and reverse proxy
+### q. Configure Apache/Passenger with virtualhost and reverse proxy
 
 Add a new config file `passenger.conf`
 
@@ -755,18 +895,19 @@ Paste the following into your new `passenger.conf` file and save:
 >Note: be sure you change DNS below to your own hostname
 
 ```
-   LoadModule passenger_module /usr/lib/ruby/gems/2.2.0/gems/passenger-5.1.3/buildout/apache2/mod_passenger.so
+   LoadModule passenger_module /opt/rubies/ruby-2.2.3/lib/ruby/gems/2.2.0/gems/passenger-5.1.3/buildout/apache2/mod_passenger.so
    <IfModule mod_passenger.c>
-     PassengerRoot /usr/lib/ruby/gems/2.2.0/gems/passenger-5.1.3
-     PassengerDefaultRuby /opt/rubies/ruby-2.2.3/bin
+     PassengerRoot /opt/rubies/ruby-2.2.3/lib/ruby/gems/2.2.0/gems/passenger-5.1.3
+     PassengerDefaultRuby /opt/rubies/ruby-2.2.3/bin/ruby
    </IfModule>
-
 <VirtualHost *:80>
     ServerName carto.mapping.community
 
     # Tell Apache and Passenger where your app's 'public' directory is
     DocumentRoot /opt/cartodb/public
     RailsEnv production
+    SetEnv RAILS_LOG_BASE_PATH /var/log/carto
+    SetEnv RAILS_CONFIG_BASE_PATH /etc/carto
     # Relax Apache security settings
     <Directory /opt/cartodb/public>
       AllowOverride all
@@ -783,6 +924,10 @@ Paste the following into your new `passenger.conf` file and save:
     # !!! Be sure to point DocumentRoot to 'public'!
     DocumentRoot /opt/cartodb/public
     RailsEnv production
+    # This will let CartoDB write all logs to /var/log/carto
+    SetEnv RAILS_LOG_BASE_PATH /var/log/carto
+    # This will change CartoDB to read all configs from /etc/carto
+    SetEnv RAILS_CONFIG_BASE_PATH /etc/carto
     PassengerSpawnMethod direct
 
     SSLEngine on
@@ -804,7 +949,7 @@ Paste the following into your new `passenger.conf` file and save:
 We'll need to create a separate configuration file to enable reverse proxy for the Carto SQL_API:
 
 ```
-nano sqlapi.conf
+sudo nano sqlapi.conf
 ```
 
 Paste the following into your new `sqlapi.conf` file and save:
@@ -828,15 +973,13 @@ NameVirtualHost *:9090
     # this preserves original header and domain
     ProxyPreserveHost On
 
-    # hardcoded for now, need to fix
     ProxyPass / http://localhost:8080/
     ProxyPassReverse / http://localhost:8080/
-
 
 </VirtualHost>
 ```
 
-### q. Install Certbot to Use letsencrypt SSL Certificate (Optional) ###
+### r. Install Certbot to Use letsencrypt SSL Certificate (Optional) ###
 
 The EFF has set up free hosting for secure certificates with a large federation of top-tier web-hosting firms via [http://letsencrypt.org]. You can read more on their website about the service. We'll be using the apache instance of "certbot" to keep our ssl certificates fresh:
 
@@ -849,7 +992,7 @@ sudo yum install python-certbot-apache
 Once Certbot is installed, run it and let it replace the existing self-signed certificate we created above:
 
 ```
-certbot --apache
+sudo certbot --apache
 ```
 
 #### **Start the Server \(to Test Out Functionality\)** ####
@@ -892,6 +1035,267 @@ curl localhost
 
 This should return:
 <html><body>You are being <a href="https://[yourURL]/login">redirected</a>.</body></html>
+
+You can also navigate in a web browser to your server URL and confirm that you see a pretty dark blue Carto login screen.
+
+The most likely culprit at this point if you're unable to connect to your new server is a firewall policy. To test whether your server is accessible try the following command from another desktop that should have access to the server:
+
+```bash
+telnet <server domain name> 443
+telnet <server domain name> 80
+```
+
+This command will try to set up an (unsuccessful) telnet session to your web server on the server ports http (80) and https (443). If you see something like the following, albeit with your server's IP address, your server is accessible:
+
+```
+$ telnet 147.188.126.125 443
+Trying 147.188.126.125...
+Connected to 147.188.126.125.
+Escape character is '^]'.
+```
+
+Your attempts to connect to the server should also register in the apache access logs, so you can use the command `sudo tail /var/log/httpd/access_log` to show the last few lines of your apache log. There should be a time stamped indication of your access attempts, something like:
+
+```
+<workstation IP address omitted> - - [09/May/2017:11:36:12 +0100] "GET /login HTTP/1.1" 200 3997 "https://carto.mapping.community/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/602.4.8 (KHTML, like Gecko) Version/10.0.3 Safari/602.4.8"
+```
+
+To look for problems, use the following commands to check relevant log files:
+
+```
+sudo tail /var/log/httpd/error_log
+sudo tail /var/log/carto/log/production.log
+```
+
+You may also want to turn off software firewalls to see if they're causing issues. On Centos this will be either:
+
+```
+systemctl stop firewalld
+systemctl stop iptables
+```
+
+You can take snippets of text from error messages to try and find some help with your configuration on stack exchange, a slack group, or the carto google group.
+
+Now hopefully you're up and running, there are a few steps still required to get user accounts created and open up features on your new server:
+
+# 3. Additional Configuration to do after the Carto stack is running #
+
+### a. Create new user
+
+```
+cd /opt/cartodb
+RAILS_ENV=production bundle exec rake cartodb:db:create_publicuser
+RAILS_ENV=production bundle exec rake cartodb:db:create_user SUBDOMAIN='username' EMAIL='user@domain.com' PASSWORD='password'
+```
+
+> note: replace "username", "email address", and "password" above with your preferences.
+
+### b. Enable builder for all users
+
+Login to PostgresSQL server
+
+```
+sudo su
+su postgres
+psql carto_db_production
+
+UPDATE users SET builder_enabled = 't';
+
+\q
+exit
+exit
+```
+
+
+### c. Activate "Sync Tables" ###
+
+This feature enables you to regularly synchronise a table in carto with another external source. It's a fantastic feature and very useful if you work with other data sources. To enable it:
+
+As above begin by logging int the PostgresSQL server
+
+```
+sudo su
+su postgres
+psql carto_db_production
+
+UPDATE users SET sync_tables_enabled = 't';
+
+\q
+exit
+exit
+```
+
+sync tables also require a script to run every 15 minutes, which will enqueue pending synchronizations (run this in the cartodb/ directory):
+
+```
+RAILS_ENV=production bundle exec rake cartodb:sync_tables
+```
+
+This command will need to be scheduled to run at a regular interval, i.e. every 15 minutes or so. Also, the environment should be changed in the command as necessary. Add to crontab like this:
+
+```
+*/15 * * * *    cd /opt/cartodb && RAILS_ENV=production /opt/rubies/ruby-2.2.3/bin/bundle exec rake cartodb:sync_tables
+```
+
+You may also want to enable specific external data sources, like arcgis. To do this, edit `/opt/cartodb/config/app_config.yml` and modify the following lines:
+
+```
+  datasources:
+    arcgis_enabled: true
+```
+
+While you're in there, you may also want to edit a few other lines in `/opt/cartodb/config/app_config.yml` for instance, the email address to be used for outbound messages:
+
+```
+  mailer:
+    from: 'from name <email@address.com>'
+```
+
+
+### d. systemd service for CartoDB-SQL-API
+
+Add CartoDB-SQL-API to systemd service:
+
+```
+cd /etc/systemd/system
+sudo nano cartodb-sql.service
+```
+
+Edit (or create) the file and save:
+
+```
+[Service]
+ExecStart=/usr/bin/node /opt/CartoDB-SQL-API/app.js production
+Restart=always
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=CartoDB-SQL-API
+WorkingDirectory=/opt/CartoDB-SQL-API
+User=carto
+Group=carto
+Environment='NODE_ENV=production'
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Start CartoDB-SQL-API
+
+```
+systemctl start cartodb-sql
+```
+
+Enable it to auto-startup at boot
+
+```
+systemctl enable cartodb-sql
+```
+
+### e. systemd service for Windshaft-cartodb
+Add Windshaft-cartodb to systemd service:
+
+```
+cd /etc/systemd/system
+sudo nano windshaft-cartodb.service
+```
+
+Edit the file and save:
+
+```
+[Service]
+ExecStart=/usr/bin/node /opt/Windshaft-cartodb/app.js production
+Restart=always
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=Windshaft-cartodb
+WorkingDirectory=/opt/Windshaft-cartodb
+User=carto
+Group=carto
+Environment='NODE_ENV=production'
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Start CartoDB-SQL-API
+```
+systemctl start windshaft-cartodb
+```
+
+Enable it to auto-startup at boot
+```
+systemctl enable windshaft-cartodb
+```
+
+### f. systemd service for CartoDB Resque process
+Create a bash script
+```
+cd /opt/cartodb/script
+nano run_resque.sh
+```
+
+Edit and save the file as below:
+```
+#!/bin/sh
+
+export PATH=$PATH:/opt/rubies/ruby-2.2.3/bin
+cd /opt/cartodb
+RAILS_ENV=production /opt/rubies/ruby-2.2.3/bin/bundle exec /opt/cartodb/script/resque
+```
+
+Make the script executable
+```
+chmod 775 run_resque.sh
+```
+
+Add cartodb-resque to systemd service:
+```
+cd /etc/systemd/system
+sudo nano cartodb-resque.service
+```
+
+Edit the file and save:
+```
+[Service]
+ExecStart=/bin/sh /opt/cartodb/script/run_resque.sh
+Restart=always
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=cartodb-resque
+WorkingDirectory=/opt/cartodb
+User=carto
+Group=carto
+Environment='NODE_ENV=production'
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Start cartodb-resque
+```
+systemctl start cartodb-resque
+```
+
+Enable it to auto-startup at boot
+```
+systemctl enable cartodb-resque
+```
+
+
+### g. Configure Redis Persistence
+We will need to enable AOF Persistence so Redis will store information that need to be persisted.
+
+```
+sudo nano /etc/redis/6379.conf
+```
+
+Change `appendonly no` to `appendonly yes`
+
+Restart redis
+
+```
+sudo systemctl restart redis_6379
+```
 
 
 ## Notes
