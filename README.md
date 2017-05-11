@@ -817,7 +817,6 @@ Change the setting under `,postgres` for host and port to reflect your PostgreSQ
         port: 5432,
 ```
         
-
 Under `,analysis` change the endpoint url to match your server url, using the following convention:
 
 ```
@@ -836,12 +835,19 @@ Under `,millstone` change the setting for cache_basedir to
         cache_basedir: '/opt/cartodb/tile_assets/'
 ```
 
+Finally, make sure you change the options for cnd_url to be null as follows:
+
+```
+  cdn_url: {
+    http: '',
+    https: '',
+```
 
 Save the changes you've made above to the windshaft configuration file and proceed. 
 
 Now, create the cache_basedir folder if it doesn't exist: 
 
-```bash
+```
 mkdir /opt/cartodb/tile_assets/
 ```
 
@@ -1136,7 +1142,17 @@ Now hopefully you're up and running, there are a few steps still required to get
 
 # 3. Additional Configuration to do after the Carto stack is running #
 
-### a. Create new user
+### a. Create users and organisations
+
+With a rails web app you use `bundle exec rake` to perform modifications to the database. To get a complete list of your options available, run the following command: `RAILS_ENV=production bundle exec rake -T`
+
+There are a few things that can cause problems for running this:
+(1) make sure you are in the proper path /opt/cartodb
+(2) make sure your path variable still includes ruby, the following command will sort things for you `export PATH=$PATH:/opt/rubies/ruby-2.2.3/bin`
+(3) make sure you precede your bundle command by setting the rails environment to "production" (unless you've gone with a development environment!)
+(4) Pay attention to where you are using single and double quotes. And make sure your word processor hasn't change them to "smart quotes"
+
+If these things are in place, you should be able to run a whole range of system tasks to create users, organisations, and set user settings. You should begin by setting up the publicuser account and then creating one for yourself:
 
 ```
 cd /opt/cartodb
@@ -1146,28 +1162,32 @@ RAILS_ENV=production bundle exec rake cartodb:db:create_user SUBDOMAIN='username
 
 > note: replace "username", "email address", and "password" above with your preferences.
 
-### b. Enable builder for all users
-
-Login to PostgresSQL server
+Now let's elevate your account privileges. To save time later, we're going to rely on an environment variable to set the username ("Subdomain" in cartodb vernacular) so that you can actually cut and paste most of the commands from this guide:
 
 ```
-sudo su
-su postgres
-psql carto_db_production
-
-UPDATE users SET builder_enabled = 't';
-
-\q
-exit
-exit
+export SUBDOMAIN=YOUR_USERNAME
+RAILS_ENV=production bundle exec rake cartodb:db:set_user_quota["${SUBDOMAIN}",10240]
+RAILS_ENV=production bundle exec rake cartodb:db:set_unlimited_table_quota["${SUBDOMAIN}"]
+RAILS_ENV=production bundle exec rake cartodb:db:set_user_private_tables_enabled["${SUBDOMAIN}",'true']
+RAILS_ENV=production bundle exec rake cartodb:db:set_user_account_type["${SUBDOMAIN}",'[DEDICATED]']
+RAILS_ENV=production bundle exec rake cartodb:set_custom_limits_for_user["${SUBDOMAIN}",import_fil‌e_size,table_row_cou‌nt,concurrent_import‌s]
 ```
 
+Now your account has a 10gb storage limit, unlimited tables, the ability to create private tables, and a "dedicated" class account.
 
-### c. Activate "Sync Tables" ###
+You can re-use the command listed above to create more user accounts. You may also want to create organisations. The following command will do this for you:
+
+```
+RAILS_ENV=production bundle exec rake cartodb:db:create_new_organization_with_owner ORGANIZATION_NAME='birmingham-uni' ORGANIZATION_DISPLAY_NAME='University of Birmingham Researchers' ORGANIZATION_SEATS='25' ORGANIZATION_QUOTA='1073741824' USERNAME='ADMIN_USER'
+```
+
+> Note: You need to change USERNAME above to reflect a user account to serve as "owner" for the organisation. Make sure you've already created this account before running this command. You should also change the ORGANIZATION_NAME, ORGANIZATION_DISPLAY_NAME to something that matches your preferred settings. 
+
+### b. Activate "Sync Tables" ###
 
 This feature enables you to regularly synchronise a table in carto with another external source. It's a fantastic feature and very useful if you work with other data sources. To enable it:
 
-As above begin by logging int the PostgresSQL server
+As above begin by logging into the PostgresSQL server
 
 ```
 sudo su
@@ -1248,6 +1268,7 @@ systemctl enable cartodb-sql
 ```
 
 ### e. systemd service for Windshaft-cartodb
+
 Add Windshaft-cartodb to systemd service:
 
 ```
@@ -1274,23 +1295,28 @@ WantedBy=multi-user.target
 ```
 
 Start CartoDB-SQL-API
+
 ```
 systemctl start windshaft-cartodb
 ```
 
 Enable it to auto-startup at boot
+
 ```
 systemctl enable windshaft-cartodb
 ```
 
 ### f. systemd service for CartoDB Resque process
+
 Create a bash script
+
 ```
 cd /opt/cartodb/script
 nano run_resque.sh
 ```
 
 Edit and save the file as below:
+
 ```
 #!/bin/sh
 
@@ -1300,17 +1326,20 @@ RAILS_ENV=production /opt/rubies/ruby-2.2.3/bin/bundle exec /opt/cartodb/script/
 ```
 
 Make the script executable
+
 ```
 chmod 775 run_resque.sh
 ```
 
 Add cartodb-resque to systemd service:
+
 ```
 cd /etc/systemd/system
 sudo nano cartodb-resque.service
 ```
 
 Edit the file and save:
+
 ```
 [Service]
 ExecStart=/bin/sh /opt/cartodb/script/run_resque.sh
@@ -1328,11 +1357,13 @@ WantedBy=multi-user.target
 ```
 
 Start cartodb-resque
+
 ```
 systemctl start cartodb-resque
 ```
 
 Enable it to auto-startup at boot
+
 ```
 systemctl enable cartodb-resque
 ```
