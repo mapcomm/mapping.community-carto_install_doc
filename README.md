@@ -10,8 +10,10 @@ We set up a local PostgreSQL server with PostGIS extensions in order to test the
 
 If you're working with virtual servers that will be behind a firewall, this installation guide will require the following configuration to work. For the sake of this example, "Server01" is the web server and "Server02" is the postgresql server.
 
-- Server01 should be open to inbound (http) traffic on ports 80, 443, 9090 for any IP address
+- Server01 should be open to inbound (http) traffic on ports 80, 443, 9090 (SQL API), 9191 (Maps API) for any IP address.
 - Server02 should be open to inbound (postgresql) traffic on port 5432 from Server01
+
+You will also likely want to have ports open for management, so leaving open port 22 for ssh etc.
 
 # 2. Installation
 
