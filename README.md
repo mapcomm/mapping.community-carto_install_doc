@@ -1322,7 +1322,7 @@ Edit and save the file as below:
 
 export PATH=$PATH:/opt/rubies/ruby-2.2.3/bin
 cd /opt/cartodb
-RAILS_ENV=production /opt/rubies/ruby-2.2.3/bin/bundle exec /opt/cartodb/script/resque
+RAILS_ENV=production /opt/rubies/ruby-2.2.3/bin/bundle exec /opt/cartodb/script/resque &> /var/log/carto/log/resque_log
 ```
 
 Make the script executable
@@ -1331,8 +1331,12 @@ Make the script executable
 chmod 775 run_resque.sh
 ```
 
-Add cartodb-resque to systemd service:
+Create the empty log file manually
+```
+touch /var/log/carto/log/resque_log
+```
 
+Add cartodb-resque to systemd service:
 ```
 cd /etc/systemd/system
 sudo nano cartodb-resque.service
@@ -1344,8 +1348,8 @@ Edit the file and save:
 [Service]
 ExecStart=/bin/sh /opt/cartodb/script/run_resque.sh
 Restart=always
-StandardOutput=syslog
-StandardError=syslog
+StandardOutput="/var/log/carto/log/resque_log"
+StandardError="/var/log/carto/log/resque_log"
 SyslogIdentifier=cartodb-resque
 WorkingDirectory=/opt/cartodb
 User=carto
