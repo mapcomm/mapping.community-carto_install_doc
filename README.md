@@ -29,7 +29,7 @@ The basic components included in CartoDB include the following:
 * Ruby \(recommended Ruby 2.2.3\)
 * [GEOS](http://trac.osgeo.org/geos) 3.5.0, [GDAL](http://www.gdal.org/) 1.11 (though note that CartoDB uses ogr2ogr2 version 2.1.3 in parallel for some features), [Mapnik](http://mapnik.org/), ImageMagick
 * unp, zip, [JSON-C](http://oss.metaparadigm.com/json-c), [PROJ4](http://trac.osgeo.org/proj)
-* CartoDB SQL API \(found at: git://github.com/CartoDB/Windshaft-cartodb.git\)
+* CartoDB SQL API \(found at: git://github.com/CartoDB/CartoDB-SQL-API.git\)
 * CartoDB MAPS API \(found at git://github.com/CartoDB/Windshaft-cartodb.git\)
 * Editor \(found at [https://github.com/CartoDB/cartodb.git](https://github.com/CartoDB/cartodb.git\)
 
@@ -512,7 +512,7 @@ sudo rm /lib64/libstdc++.so.6
 sudo ln -s /lib64/libstdc++.so.6.0.21 /lib64/libstdc++.so.6
 ```
 ### m. Add unp (decompression tool) to Centos
-CartoDB requires `unp` package to decompress any zip files. But `unp` is not avaiable as standard RPM package for Centos.
+CartoDB requires `unp` package to decompress any zip files. But `unp` is not available as standard RPM package for Centos.
 We will need to manually add the binary (perl script) to Centos.
 
 Create a script file
