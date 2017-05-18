@@ -975,6 +975,13 @@ Paste the following into your new `passenger.conf` file and save:
 </VirtualHost>
 ```
 
+> Note: if you are using certbot (see below) you must manually edit these two lines (from above) to use the following instead (YOUR_DIRECTORY should be changed to the domain name based directory assigned by certbot):
+
+```
+SSLCertificateFile /etc/letsencrypt/live/YOUR_DIRECTORY/cert.pem
+SSLCertificateKeyFile /etc/letsencrypt/live/YOUR_DIRECTORY/privkey.pem
+```
+
 We'll need to create a separate configuration file to enable reverse proxy for the Carto SQL_API:
 
 ```
@@ -1008,12 +1015,22 @@ NameVirtualHost *:9090
 </VirtualHost>
 ```
 
+> Note: if you are using certbot (see below) you must manually edit these two lines (from above) to use the following instead (YOUR_DIRECTORY should be changed to the domain name based directory assigned by certbot):
+
+```
+SSLCertificateFile /etc/letsencrypt/live/YOUR_DIRECTORY/cert.pem
+SSLCertificateKeyFile /etc/letsencrypt/live/YOUR_DIRECTORY/privkey.pem
+```
+
 Create a separate configuration file to enable reverse proxy for the Windshaft-carto:
+
 ```
 sudo nano mapapi.conf
 ```
+
 >Note: be sure you change DNS below to your own hostname
 Paste the following into your new `mapapi.conf` file and save:
+
 ```
 Listen 9191
 
@@ -1040,6 +1057,14 @@ NameVirtualHost *:9191
 </VirtualHost>
 ```
 
+> Note: if you are using certbot (see below) you must manually edit these two lines (from above) to use the following instead (YOUR_DIRECTORY should be changed to the domain name based directory assigned by certbot):
+
+```
+SSLCertificateFile /etc/letsencrypt/live/YOUR_DIRECTORY/cert.pem
+SSLCertificateKeyFile /etc/letsencrypt/live/YOUR_DIRECTORY/privkey.pem
+```
+
+
 ### s. Install Certbot to Use letsencrypt SSL Certificate (Optional) ###
 
 The EFF has set up free hosting for secure certificates with a large federation of top-tier web-hosting firms via [http://letsencrypt.org]. You can read more on their website about the service. We'll be using the apache instance of "certbot" to keep our ssl certificates fresh:
@@ -1055,6 +1080,19 @@ Once Certbot is installed, run it and let it replace the existing self-signed ce
 ```
 sudo certbot --apache
 ```
+
+Make sure you have modified the directives `SSLCertificateFile` and `SSLCertificateKeyFile` across all relevant Apache configuration files as noted in the previous section. You can check whether there are lines you've missed using the following command:
+
+```
+grep -R SSLCertificate * /etc/httpd/conf.d/*
+```
+
+Make sure you restart the apache server after all these changes have been made:
+
+```
+sudo systemctl restart httpd
+```
+
 
 #### **Start the Server \(to Test Out Functionality\)** ####
 
