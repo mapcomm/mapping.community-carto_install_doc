@@ -423,7 +423,7 @@ sudo make install
 Install some ruby dependencies
 
 ```
-sudo yum install readline-devel
+sudo yum install readline-devel bzip2
 ```
 
 Install ruby 2.2.3. CartoDB has been deeply tested with Ruby 2.2.
