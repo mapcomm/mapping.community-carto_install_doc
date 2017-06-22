@@ -450,29 +450,15 @@ Install compass. It will be needed later on by CartoDB’s editor
 sudo env "PATH=$PATH" gem install compass
 ```
 
-### k. GDAL 2.1.3
 
-The Centos repository only provides GDAL v1.11.4 so we will need to install the latest GDAL v2.1.3 from source. As we've noted above, Carto uses two versions of GDAL in parallel, in order to borrow some features that were reintroduced in GDAL 2.x. Our installation here will 
-
-```
-cd ~/
-wget http://download.osgeo.org/gdal/2.1.3/gdal-2.1.3.tar.gz
-tar -xzf gdal-2.1.3.tar.gz
-cd gdal-2.1.3
-./configure --with-geos=yes --with-pg=/usr/pgsql-9.5/bin/pg_config --prefix=/usr
-make
-sudo make install
-```
-> Note: the two flags included above for 'configure' are very important. Make sure that GEOS support shows "yes" and that the install script is able to find pg_config and PostgresQL.
-
-### l. GCC Library
+### k. GCC Library
 
 The system wide GCC library from Centos 7 is incompatible with CartoDB MAP API. Therefore we will need to manually compile the library and make it available for later use. The minimum version of GCC is v5.1.0.
 
 First install prerequisites:
 
 ```
-sudo yum install gmp gmp-devel mpfr mpft-devel libmpc libmpc-devel
+sudo yum install gmp gmp-devel mpfr mpft-devel libmpc libmpc-devel zip unzip gdal-devel
 ```
 
 The install GCC, from which we'll extract the library:
@@ -500,6 +486,23 @@ Update current symbolic link of the library
 sudo rm /lib64/libstdc++.so.6
 sudo ln -s /lib64/libstdc++.so.6.0.21 /lib64/libstdc++.so.6
 ```
+
+
+### l. GDAL 2.1.3
+
+The Centos repository only provides GDAL v1.11.4 so we will need to install the latest GDAL v2.1.3 from source. It was originally the case (and is still documented) that Carto uses two versions of GDAL in parallel, in order to borrow some features that were reintroduced in GDAL 2.x, but this use seems to have been deprecated. Our installation here will install GDAL v2.1.3 without any other side loaded versions of GDAL.
+
+```
+cd ~/
+wget http://download.osgeo.org/gdal/2.1.3/gdal-2.1.3.tar.gz
+tar -xzf gdal-2.1.3.tar.gz
+cd gdal-2.1.3
+./configure --with-geos=yes --with-pg=/usr/pgsql-9.5/bin/pg_config --prefix=/usr
+make
+sudo make install
+```
+> Note: the two flags included above for 'configure' are very important. Make sure that GEOS support shows "yes" and that the install script is able to find pg_config and PostgresQL.
+
 
 ### m. Add unp (decompression tool) to Centos
 
@@ -542,7 +545,7 @@ sudo yum install python-devel
 Install dependencies
 
 ```bash
-sudo yum install ImageMagick unzip patch gdal-devel
+sudo yum install ImageMagick patch
 export PATH=$PATH:/usr/pgsql-9.5/bin/:/opt/rubies/ruby-2.2.3/bin
 RAILS_ENV=production bundle install --deployment --without development test
 npm install
