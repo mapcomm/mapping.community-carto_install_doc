@@ -27,7 +27,7 @@ The basic components included in CartoDB include the following:
 * Redis \(note, CartoDB requires **redis 3.x** version - check [here](http://cartodb.readthedocs.io/en/latest/components/redis.html) to see if this has changed
 * NodeJS 6.9 \(the Carto platform is on the way towards transitioning from the former requirement of 0.10 towards 6.x the latter of which we've installed with and tested here)\ and npm 3.10.9 \(same as before, so upgrading from official carto doc recommendation of 2.14.16)\
 * Ruby \(recommended Ruby 2.2.3\)
-* [GEOS](http://trac.osgeo.org/geos) 3.5.0, [GDAL](http://www.gdal.org/) 1.11 (though note that CartoDB uses ogr2ogr2 version 2.1.3 in parallel for some features), [Mapnik](http://mapnik.org/), ImageMagick
+* [GEOS](http://trac.osgeo.org/geos) 3.5.0, [GDAL](http://www.gdal.org/) 1.11 (though note that CartoDB uses ogr2ogr2 version 2.1.2 in parallel for some features), [Mapnik](http://mapnik.org/), ImageMagick
 * unp, zip, [JSON-C](http://oss.metaparadigm.com/json-c), [PROJ4](http://trac.osgeo.org/proj)
 * CartoDB SQL API \(found at: git://github.com/CartoDB/CartoDB-SQL-API.git\)
 * CartoDB MAPS API \(found at git://github.com/CartoDB/Windshaft-cartodb.git\)
@@ -200,6 +200,8 @@ export PATH=/usr/pgsql-9.5/bin:$PATH
 sudo env "PATH=$PATH" make all install
 ```
 
+> Note: tags for an existing install can be discovered using the command `git describe --tags`
+ 
 ### e. GIS dependencies
 
 Install the following dependencies:
@@ -488,15 +490,15 @@ sudo ln -s /lib64/libstdc++.so.6.0.21 /lib64/libstdc++.so.6
 ```
 
 
-### l. GDAL 2.1.3
+### l. GDAL 2.1.2
 
-The Centos repository only provides GDAL v1.11.4 so we will need to install the latest GDAL v2.1.3 from source. It was originally the case (and is still documented) that Carto uses two versions of GDAL in parallel, in order to borrow some features that were reintroduced in GDAL 2.x, but this use seems to have been deprecated. Our installation here will install GDAL v2.1.3 without any other side loaded versions of GDAL.
+The Centos repository only provides GDAL v1.11.4 so we will need to install the latest GDAL v2.1.2 from source. It was originally the case (and is still documented) that Carto uses two versions of GDAL in parallel, in order to borrow some features that were reintroduced in GDAL 2.x, but this use seems to have been deprecated. Our installation here will install GDAL v2.1.2 without any other side loaded versions of GDAL.
 
 ```
 cd ~/
-wget http://download.osgeo.org/gdal/2.1.3/gdal-2.1.3.tar.gz
-tar -xzf gdal-2.1.3.tar.gz
-cd gdal-2.1.3
+wget http://download.osgeo.org/gdal/2.1.2/gdal-2.1.2.tar.gz
+tar -xzf gdal-2.1.2.tar.gz
+cd gdal-2.1.2
 ./configure --with-geos=yes --with-pg=/usr/pgsql-9.5/bin/pg_config --prefix=/usr
 make
 sudo make install
@@ -693,6 +695,8 @@ cd /opt/CartoDB-SQL-API
 git checkout master
 ```
 
+> Note: if you want to install a different version of this API, be sure to change "master" in the above to reflect either the `tags/[name of tag]` or the exact version name.
+ 
 Install npm dependencies
 
 ```
@@ -818,7 +822,7 @@ Change the setting under `,postgres` for host and port to reflect your PostgreSQ
         host: 'postgres server IP',
         port: 5432,
 ```
-        
+
 Under `,analysis` change the endpoint url to match your server url, using the following convention:
 
 ```
@@ -897,12 +901,12 @@ sudo yum install libcurl-devel httpd-devel
 ```
 
 Run the Passenger Apache module installer:
+
 ```
-sudo yum install libcurl-devel httpd-devel
-sudo passenger-install-apache2-module
+sudo env "PATH=$PATH" passenger-install-apache2-module
 ```
 
-The module installer will take you through a brief dialogue. You can just hit the enter key after each prompt to confirm that you are happy with the default selection, it will then compile and install passenger for apache.
+The module installer will take you through a brief dialogue. You can just hit the enter key after each prompt to confirm that you are happy with the default selection (a "Ruby" focussed install), it will then compile and install passenger for apache.
 
 ### q. Generate self-signed SSL certificate
 
@@ -924,7 +928,7 @@ sudo nano passenger.conf
 
 Paste the following into your new `passenger.conf` file and save:
 
->Note: be sure you change DNS below to your own hostname
+>Note: be sure you change DNS below to your own hostname; also IMPORTANT - check to see what version of passenger was installed by the above command and adjust the lines below to reflect the proper path name, which includes the version ("5.1.3" here, but 5.1.7 as of the last revision of this document).
 
 ```
    LoadModule passenger_module /opt/rubies/ruby-2.2.3/lib/ruby/gems/2.2.0/gems/passenger-5.1.3/buildout/apache2/mod_passenger.so
@@ -1067,6 +1071,11 @@ SSLCertificateFile /etc/letsencrypt/live/YOUR_DIRECTORY/cert.pem
 SSLCertificateKeyFile /etc/letsencrypt/live/YOUR_DIRECTORY/privkey.pem
 ```
 
+Now start apache:
+
+```
+sudo systemctl start httpd
+```
 
 ### s. Install Certbot to Use letsencrypt SSL Certificate (Optional) ###
 
