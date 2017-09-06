@@ -1451,6 +1451,179 @@ Restart redis
 sudo systemctl restart redis_6379
 ```
 
+### h. Carto Data Services API
+Login to DB server
+
+Install server and client extensions
+```
+git clone https://github.com/CartoDB/dataservices-api.git
+cd dataservices-api
+cd client && sudo make install
+cd -
+cd server/extension && sudo make install
+```
+
+Install python library
+```
+# in dataservices-api repo root path:
+cd server/lib/python/cartodb_services && pip install -r requirements.txt && sudo pip install . --upgrade
+```
+
+Create a database to hold all the server part and a user for it
+```
+CREATE DATABASE dataservices_db ENCODING = 'UTF8' LC_COLLATE = 'en_US.UTF-8' LC_CTYPE = 'en_US.UTF-8';
+CREATE USER dataservices_user;
+```
+
+Install needed extensions in dataservices_db database
+```
+psql -U postgres -d dataservices_db -c "BEGIN;CREATE EXTENSION IF NOT EXISTS plproxy; COMMIT" -e
+psql -U postgres -d dataservices_db -c "BEGIN;CREATE EXTENSION IF NOT EXISTS plpythonu; COMMIT" -e
+psql -U postgres -d dataservices_db -c "BEGIN;CREATE EXTENSION IF NOT EXISTS cdb_dataservices_server; COMMIT" -e
+```
+
+### i. Carto Data Services
+Login to DB server
+Make the extension available in postgres
+```
+cd ~
+git clone https://github.com/CartoDB/data-services.git
+cd data-services/geocoder/extension
+sudo make install
+```
+
+Download the internal geocoder data
+```
+cd ~/data-services/geocoder
+./geocoder_dowload_dumps
+```
+
+Once the data is downloaded, execute this command:
+```
+./geocoder_restore_dump postgres dataservices_db db_dumps/*.sql
+```
+
+Install geocoder extension
+```
+cd ~/data-services/geocoder
+sudo make all install
+```
+
+Install onto a CARTO user's database
+It is mandatory to install it into a CARTO user's database
+
+```
+psql -U development_cartodb_user_fe3b850a-01c0-48f9-8a26-a82f09e9b53f cartodb_dev_user_fe3b850a-01c0-48f9-8a26-a82f09e9b53f_db
+CREATE EXTENSION cdb_geocoder;
+```
+
+### j. Install data observatory extension
+Login to DB server
+Make the extension available in postgresql to be installed
+```
+cd ~
+git clone https://github.com/CartoDB/observatory-extension.git
+cd observatory
+sudo make install
+```
+
+This extension needs data, dumps are not available so we're going to use the test fixtures to make it work.
+```
+psql -U postgres -d dataservices_db -f src/pg/test/fixtures/load_fixtures.sql
+```
+
+Give permission to execute and select to the dataservices_user user:
+```
+psql -U postgres -d dataservices_db -c "BEGIN;CREATE EXTENSION IF NOT EXISTS observatory VERSION 'dev'; COMMIT" -e
+psql -U postgres -d dataservices_db -c "BEGIN;GRANT SELECT ON ALL TABLES IN SCHEMA cdb_observatory TO dataservices_user; COMMIT" -e
+psql -U postgres -d dataservices_db -c "BEGIN;GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA cdb_observatory TO dataservices_user; COMMIT" -e
+psql -U postgres -d dataservices_db -c "BEGIN;GRANT SELECT ON ALL TABLES IN SCHEMA observatory TO dataservices_user; COMMIT" -e
+psql -U postgres -d dataservices_db -c "BEGIN;GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA observatory TO dataservices_user; COMMIT" -e
+```
+
+### k. Server configuration
+Login to DB Server
+Enter psql CLI for carto_db_production
+```
+psql -U postgres carto_db_production
+```
+
+Redis configuration
+```
+SELECT CDB_Conf_SetConf(
+    'redis_metadata_config',
+    '{"redis_host": "localhost", "redis_port": 6379, "sentinel_master_id": "", "timeout": 0.1, "redis_db": 5}'
+);
+SELECT CDB_Conf_SetConf(
+    'redis_metrics_config',
+    '{"redis_host": "localhost", "redis_port": 6379, "sentinel_master_id": "", "timeout": 0.1, "redis_db": 5}'
+);
+```
+
+Users/Organizations
+```
+SELECT CDB_Conf_SetConf(
+    'user_config',
+    '{"is_organization": false, "entity_name": "<YOUR_USERNAME>"}'
+);
+```
+
+Data Observatory
+```
+SELECT CDB_Conf_SetConf(
+    'data_observatory_conf',
+    '{"connection": {"whitelist": [], "production": "host=localhost port=5432 dbname=dataservices_db user=geocoder_api", "staging": "host=localhost port=5432 dbname=dataservices_db user=geocoder_api"}}'
+);
+\q
+```
+
+User database configuration
+User (client) databases need also some configuration so that the client extension can access the server:
+```
+psql -U postgres cartodb_user_7747c61a-23a1-4ccc-a738-747e8ee24821_db
+SELECT CDB_Conf_SetConf('user_config', '{"is_organization": false, "entity_name": "<YOUR_USERNAME>"}');
+```
+The geocoder_server_config (the name is not accurate for historical reasons) entry points to the dataservices server DB (you can use a specific database for the server or your same user's):
+```
+SELECT CDB_Conf_SetConf('geocoder_server_config', '{ "connection_str": "host=localhost port=5432 dbname=<SERVER_DB_NAME> user=postgres"}');
+```
+
+### l. Update cartodb configuration
+Login to Web Server
+Edit the following session of /opt/cartodb/config/app_config.yml as below
+```
+  dataservices:
+    enabled:
+        geocoder_internal: true
+        hires_geocoder: false
+        isolines: false
+        routing: false
+        data_observatory: true
+```
+
+Add the following entry to the geocoder entry of the cartodb/config/app_config.yml file: 
+```
+  geocoder:
+    #force_batch: true
+    #disable_cache: true
+    api:
+      host: '10.128.0.7'
+      port: 5432
+      user: 'dataservices_user'
+      dbname: 'dataservices_db'
+```
+
+Execute the rake tasks to update all the users and organizations:
+```
+cd /opt/cartodb
+RAILS_ENV=production bundle exec rake cartodb:db:configure_geocoder_extension_for_non_org_users[username,all_users]
+RAILS_ENV=production bundle exec rake cartodb:db:configure_geocoder_extension_for_organizations[organization_name,all_organizations]
+```
+
+Restart Apache to make it effective.
+```
+sudo service httpd restart
+```
 
 ## Notes
 
