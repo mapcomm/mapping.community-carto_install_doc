@@ -1,0 +1,13 @@
+[Service]
+ExecStart=/usr/bin/node /opt/CartoDB-SQL-API/app.js production
+Restart=always
+StandardOutput="/var/log/carto/log/SQL-API_log"
+StandardError="/var/log/carto/log/SQL-API_log"
+SyslogIdentifier=CartoDB-SQL-API
+WorkingDirectory=/opt/CartoDB-SQL-API
+User=carto
+Group=carto
+Environment='NODE_ENV=production'
+
+[Install]
+WantedBy=multi-user.target

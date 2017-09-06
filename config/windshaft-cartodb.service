@@ -1,0 +1,13 @@
+[Service]
+ExecStart=/usr/bin/node /opt/Windshaft-cartodb/app.js production
+Restart=always
+StandardOutput="/var/log/carto/log/Windshaft_log"
+StandardError="/var/log/carto/log/Windshaft_log"
+SyslogIdentifier=Windshaft-cartodb
+WorkingDirectory=/opt/Windshaft-cartodb
+User=carto
+Group=carto
+Environment='NODE_ENV=production'
+
+[Install]
+WantedBy=multi-user.target
