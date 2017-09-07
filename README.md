@@ -1393,6 +1393,11 @@ module.exports.oauth = {
 
 > Note: hostname to change above!
 
+Change `module.exports.log_filename` to a central log location:
+```
+module.exports.log_filename = '/var/log/carto/log/SQL-API_log'
+```
+
 Now, try to start the service to confirm that it is installed correctly (note, again the second parameter is always the environment if the service. Remember to use the same you used in the configuration).
 
 ```
@@ -1478,6 +1483,11 @@ Under `,millstone` change the setting for cache_basedir to
 
 ```
         cache_basedir: '/opt/cartodb/tile_assets/'
+```
+
+Change `log_filename` to a central log location:
+```
+log_filename: '/var/log/carto/log/node-windshaft.log'
 ```
 
 Finally, make sure you change the options for cnd_url to be null as follows:
