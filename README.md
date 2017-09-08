@@ -1664,6 +1664,60 @@ Restart Apache to make it effective.
 sudo service httpd restart
 ```
 
+# 4. Upgrade process for Carto components
+
+In this next section, we will document the process of upgrading your Carto server components to new versions. The Carto team works on a "continuous development" basis, so updates are very frequently made to the platform. However, major releases are given tags in github, and important changes (and steps required for upgrade) are detailed in the release note history. Especially because versions change so often , you should take the following as an example of how to set up an upgrade and not strictly as a de facto process for your server.
+
+4.1. Check versions for currently installed Carto components:
+
+You will need to know what versions of each component you installed originally. To test this, do the following:
+
+On your web server:
+
+```
+cd /opt/cartodb
+git describe --tags
+
+cd /opt/CartoDB-SQL-API
+git describe --tags
+
+cd /opt/Windshaft-cartodb
+git describe --tags
+
+cd /opt/dataservices-api
+git describe --tags
+```
+
+
+On your database server, check:
+
+```
+cd /opt/cartodb-postgresql
+git describe --tags
+
+cd /opt/dataservices
+git describe --tags
+
+cd /opt/observatory
+git describe --tags
+```
+
+Now you have a collection of "tags" you can use to generate a list of updates required. Now make your way over to each github page for these components and check the current "tag" (note that some of these have multiple branches, especially the postgresql components, so be sure you're not accidentally downgrading).
+
+The steps you need to take will be an aggregation of all details from each version increment detailed in the documentation for those components, also with the caveat that you're working with CentOS and not Ubuntu (see above for our suggestios on how to translate ubuntu packages into Centos etc.). 
+
+- For the CartoDB application, see here: https://github.com/CartoDB/cartodb/blob/master/NEWS.md 
+- For the Carto SQL API, see here: https://github.com/CartoDB/CartoDB-SQL-API/blob/master/NEWS.md
+- For Windshaft-CartoDB (the tiler and MAPS API), see here: https://github.com/CartoDB/Windshaft-cartodb/blob/master/NEWS.md
+- For Data Services API: https://github.com/CartoDB/dataservices-api/blob/master/NEWS.md
+
+And on your database server, components to check are:
+- https://github.com/CartoDB/cartodb-postgresql/blob/master/NEWS.md
+- https://github.com/CartoDB/observatory-extension/blob/master/NEWS.md
+- https://github.com/CartoDB/data-services/blob/master/NEWS.md
+
+
+
 # Notes
 
 [^1]: For more on this fix I've used here, see [http://unix.stackexchange.com/questions/83191/how-to-make-sudo-preserve-path](http://unix.stackexchange.com/questions/83191/how-to-make-sudo-preserve-path).
