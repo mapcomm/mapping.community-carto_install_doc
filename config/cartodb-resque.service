@@ -1,0 +1,13 @@
+[Service]
+ExecStart=/bin/sh /opt/cartodb/script/run_resque.sh
+Restart=always
+StandardOutput="/var/log/carto/log/resque_log"
+StandardError="/var/log/carto/log/resque_log"
+SyslogIdentifier=cartodb-resque
+WorkingDirectory=/opt/cartodb
+User=carto
+Group=carto
+Environment='NODE_ENV=production'
+
+[Install]
+WantedBy=multi-user.target

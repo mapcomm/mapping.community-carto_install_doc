@@ -27,7 +27,7 @@ The basic components included in CartoDB include the following:
 * Redis \(note, CartoDB requires **redis 3.x** version - check [here](http://cartodb.readthedocs.io/en/latest/components/redis.html) to see if this has changed
 * NodeJS 6.9 \(the Carto platform is on the way towards transitioning from the former requirement of 0.10 towards 6.x the latter of which we've installed with and tested here)\ and npm 3.10.9 \(same as before, so upgrading from official carto doc recommendation of 2.14.16)\
 * Ruby \(recommended Ruby 2.2.3\)
-* [GEOS](http://trac.osgeo.org/geos) 3.5.0, [GDAL](http://www.gdal.org/) 1.11 (though note that CartoDB uses ogr2ogr2 version 2.1.3 in parallel for some features), [Mapnik](http://mapnik.org/), ImageMagick
+* [GEOS](http://trac.osgeo.org/geos) 3.5.0, [GDAL](http://www.gdal.org/) 1.11 (though note that CartoDB uses ogr2ogr2 version 2.1.2 in parallel for some features), [Mapnik](http://mapnik.org/), ImageMagick
 * unp, zip, [JSON-C](http://oss.metaparadigm.com/json-c), [PROJ4](http://trac.osgeo.org/proj)
 * CartoDB SQL API \(found at: git://github.com/CartoDB/CartoDB-SQL-API.git\)
 * CartoDB MAPS API \(found at git://github.com/CartoDB/Windshaft-cartodb.git\)
@@ -77,7 +77,7 @@ Begin by installing some of the basic required components of your server:
 
 ```bash
 sudo yum install autoconf bison flex binutils
-sudo yum install gcc gcc-c++ make openssl-devel tcl
+sudo yum install gcc gcc-c++ make openssl-devel tcl nano wget
 ```
 
 In contrast to Ubuntu, the main CentOS repository lacks many server packages, so it is typical to use the EPEL \([Extra Packages for Enterprise Linux](https://fedoraproject.org/wiki/EPEL/FAQ#howtouse%29\) repository and "voila" some of the packages noted below, including "redis" and "postgis" become available:
@@ -200,6 +200,8 @@ export PATH=/usr/pgsql-9.5/bin:$PATH
 sudo env "PATH=$PATH" make all install
 ```
 
+> Note: tags for an existing install can be discovered using the command `git describe --tags`
+ 
 ### e. GIS dependencies
 
 Install the following dependencies:
@@ -423,7 +425,7 @@ sudo make install
 Install some ruby dependencies
 
 ```
-sudo yum install readline-devel
+sudo yum install readline-devel bzip2
 ```
 
 Install ruby 2.2.3. CartoDB has been deeply tested with Ruby 2.2.
@@ -450,40 +452,15 @@ Install compass. It will be needed later on by CartoDB’s editor
 sudo env "PATH=$PATH" gem install compass
 ```
 
-### k. GDAL 2.1.3
 
-The Centos repository only provides GDAL v1.11.4 so we will need to install the latest GDAL v2.1.3 from source. As we've noted above, Carto uses two versions of GDAL in parallel, in order to borrow some features that were reintroduced in GDAL 2.x. Our installation here will 
-
-```
-cd ~/
-wget http://download.osgeo.org/gdal/2.1.3/gdal-2.1.3.tar.gz
-tar -xzf gdal-2.1.3.tar.gz
-cd gdal-2.1.3
-./configure --with-geos=yes --with-pg=/usr/pgsql-9.5/bin/pg_config --prefix=/usr
-make
-sudo make install
-```
-> Note: the two flags included above for 'configure' are very important. Make sure that GEOS support shows "yes" and that the install script is able to find pg_config and PostgresQL.
-
-If  you'd like to with with ESRI shapefiles in carto (which need to be packed in a zip file because there are multiple files), you should create a symlink to unzip:
-
-```
-sudo ln -s /usr/bin/unzip /usr/bin/unp
-```
-
-Make a symbolic link of the binary so Carto Editor can use it later on.
-```
-ln -s /bin/ogr2ogr /bin/ogr2ogr2.1
-```
-
-### l. GCC Library
+### k. GCC Library
 
 The system wide GCC library from Centos 7 is incompatible with CartoDB MAP API. Therefore we will need to manually compile the library and make it available for later use. The minimum version of GCC is v5.1.0.
 
 First install prerequisites:
 
 ```
-sudo yum install gmp gmp-devel mpfr mpft-devel libmpc libmpc-devel
+sudo yum install gmp gmp-devel mpfr mpft-devel libmpc libmpc-devel zip unzip gdal-devel
 ```
 
 The install GCC, from which we'll extract the library:
@@ -511,649 +488,31 @@ Update current symbolic link of the library
 sudo rm /lib64/libstdc++.so.6
 sudo ln -s /lib64/libstdc++.so.6.0.21 /lib64/libstdc++.so.6
 ```
+
+
+### l. GDAL 2.1.2
+
+The Centos repository only provides GDAL v1.11.4 so we will need to install the latest GDAL v2.1.2 from source. It was originally the case (and is still documented) that Carto uses two versions of GDAL in parallel, in order to borrow some features that were reintroduced in GDAL 2.x, but this use seems to have been deprecated. Our installation here will install GDAL v2.1.2 without any other side loaded versions of GDAL.
+
+```
+cd ~/
+wget http://download.osgeo.org/gdal/2.1.2/gdal-2.1.2.tar.gz
+tar -xzf gdal-2.1.2.tar.gz
+cd gdal-2.1.2
+./configure --with-geos=yes --with-pg=/usr/pgsql-9.5/bin/pg_config --prefix=/usr
+make
+sudo make install
+```
+> Note: the two flags included above for 'configure' are very important. Make sure that GEOS support shows "yes" and that the install script is able to find pg_config and PostgresQL.
+
+
 ### m. Add unp (decompression tool) to Centos
-CartoDB requires `unp` package to decompress any zip files. But `unp` is not available as standard RPM package for Centos.
-We will need to manually add the binary (perl script) to Centos.
 
-Create a script file
+CartoDB requires the `unp` package to decompress any zip files. But `unp` is not available as standard RPM package for Centos, as it was designed for Debian and ported to Ubuntu. Luckily for us, because it is a perl script, the process of porting to Centos is nonexistent. One only needs to download the script straight from the Debian repository and make it executable:
+
 ```
-sudo nano /usr/bin/unp
-```
-
-Paste the following to the file and save:
-```
-#! /usr/bin/perl
-#
-# "unp" runs the correct unpack program depending on the file extension
-# of the given parameter.
-# 
-# Author: Eduard Bloch <blade@debian.org>, 2010
-#
-# UI modelled after unp versions 1.x by Eduard Bloch (2000-2009) and original
-# unp by Andre Karwath (1997).
-#
-# This file is free software; you can redistribute it and/or modify it
-# under the terms of the GNU General Public License version 2 as published by
-# the Free Software Foundation.
-#
-# This program is distributed in the hope that it will be useful, but
-# WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-# General Public License for more details.
-#
-# -----------------------------------------------------------------------
-# If you make changes to this script, please feel free to forward the new 
-# version to the author.
-# -----------------------------------------------------------------------
-
-require 5.002;
-
-use Getopt::Long qw(:config no_ignore_case bundling pass_through);
-use File::Basename;
-use Cwd;
-
-use strict;
-use warnings;
-#use diagnostics;
-
-my @ifiles;
-my @xargs;
-my @tools;
-my $retcode=0;
-
-my $opt_quiet;
-my $opt_debug;
-my $opt_help;
-my $opt_force;
-my $opt_formats;
-my $opt_umode;
-my $opt_umode_smart;
-my $opt_verbose;
-
-BEGIN {
-  eval 'use Locale::gettext';
-  if ($@) {
-    eval q{ sub gettext { return shift; } };
-  } else {
-    textdomain('unp');
-  }
-}
-
-my $catmode = $0=~/(^|\/ucat)$/;
-
-&init_formats;
-&parse_cli;
-&process_files;
-print STDERR "WARNING: There were errors while processing files!\n" if $retcode;
-print STDERR "retcode: $retcode\n" if $opt_debug;
-# return something meaning, i.e. it may be single unpacker's only return code
-# if the status is bad but the value is zero, return at least 1
-exit ( $retcode ? ( $retcode < 256 ? $retcode : 1 ) : 0 );
-
-sub show_help 
-{
-printf(gettext("
-USAGE:
-   %s [ options ] file [ files... ]
-   file: compressed file(s) to expand/extract
-
-   Use -- [ ARGUMENTS ] to pass arguments to external programs, eg. some tar options:
-   unp fastgl.tgz xmnt.tgz -- -C /tmp
-
-   Options:
-   -f Continue even if program availability checks fail or directory collision occurs
-   -u Special helper mode.
-      For most archive types:
-      - create directory <filename without suffix>/
-      - extract contents there
-      For Debian/Ubuntu packages:
-      - extract data.tar.gz after each operation in local directory
-      - extract control.tar.gz into control/<package_version_arch>/
-   -U Smart mode, acts like -u (see above) if archive contains multiple
-      elements but if there is only one file/directory element then it's stored 
-      in the current directory.
-   -s Show the list of supported formats
-   -v More verbosity
-   -h Show this help
-"), $0) if !$catmode;
-printf(gettext("
-USAGE:
-   %s [ options ] file [ files... ]
-   Uncompress multiple files to STDOUT
-
-   Options:
-   -s  Show the list of supported formats
-   -h  Show this help
-   -v  More verbosity, to STDERR
-"), $0) if $catmode;
-exit 1;
-}
-
-
-sub init_formats
-{
-   my $sh="/bin/sh";
-
-# Database format: 
-# - providing packages (human readable)
-# - filename suffix,
-# - libmagic (file tool) pattern, 
-# - process flags (bitfield), 
-# - array of command sets (=arrays of command and arguments). If the first arg
-#   of the command set is an array then it's interpreted as a list of
-#   requirements which need to be checked.
-#
-# Flag values:
-# 2:  retry other tools calls if the first candidate failed
-# 4:  pass source and extra args in different order (src args...), good for
-#     shell commands using $0 and $@
-# 8:  stream filters, contents may be extracted if tar format is detected. Only
-#     simple syntax allowed.
-# 16: append suggested target name to calling arguments
-use constant 
-{
-   TRY_OTHER_TOOLS => 2,
-   SHELL_STYLE_ARGS => 4,
-   IS_STREAM_FILTER => 8,
-   APPEND_GEN_NAME => 16
-};
-
-   @tools = (
-      [ "tar", "tar", "tar.archive", 0,
-      [ "tar", "-x", "-v", "-f"]
-      ],
-
-      # shortcuts, no extra scripting needed
-      [ gettext("tar with gzip"), "tgz|tar.gz", undef, 0,
-      [[ "gzip" ], "tar",  "-z", "-x", "-v", "-f"]
-      ],
-
-      [ gettext("tar with bzip2"), "tar.bz2|tbz2", undef, 0,
-      [ [ "bzip2" ], "tar", "--bzip2", "-x", "-v", "-f"]
-      ],
-
-      [ gettext("tar with xz-utils"), "tar.xz|txz", undef, 0,
-      
-      [ [ "xz" ], "tar", "--xz", "-x", "-v", "-f"]
-      ],
-
-      [gettext( "tar with lzip"), "tar.lzip", undef, 0,
-      
-      [[ "lzip" ], "tar", "--lzip", "-x", "-v", "-f"]
-      ],
-
-      [gettext( "tar with lzop"), "tar.lzop|tzo", undef, 0,
-      
-      [[ "lzop" ], "tar", "--lzop", "-x", "-v", "-f"]
-      ],
-
-      [gettext( "tar with compress"), "tar.z", undef, 0,
-      
-      [ [ "compress" ], "tar", "-Z", "-x", "-v", "-f"]
-      ],
-
-      # XXX: that's ok for now but if support for other unpackers is needed
-      # (like multithreaded implementations) than ucat code needs to be
-      # extended to check them
-      [ "gzip", "gz", "gzip.compressed.data", IS_STREAM_FILTER,
-      [ "gzip", "-cd" ]
-      ],
-
-      [ "bzip2", "bz2", "bzip2.compressed", IS_STREAM_FILTER,
-      [ "bzip2", "-cd" ]
-      ],
-
-      [ "lzop", "lzo", "lzop.compressed", IS_STREAM_FILTER,
-      [ "lzop", "-cd" ]
-      ],
-
-      [ "xz-utils", "xz", "xz.compressed", IS_STREAM_FILTER,
-      [ "xzcat" ]
-      ],
-
-      [ "lzip", "lz", "lzip.compressed", IS_STREAM_FILTER,
-      [ "lzip", "-cd" ]
-      ],
-
-      [ gettext("xz-utils or lzma"), "lzma", "lzma.compressed", IS_STREAM_FILTER|TRY_OTHER_TOOLS,
-      [ "xzcat" ],
-      [ "lzcat" ]
-      ],
-
-      [ gettext("cpio or afio"), "cpio|afio",  "cpio", SHELL_STYLE_ARGS,
-      [ "afio", "-Z", "-v", "-i" ],
-      [ ["cpio"], $sh, "-c", 'cpio -i -d	--verbose "$@" < "$0"' ]
-      ],
-
-      [ gettext("rpm2cpio and cpio"), "rpm", 'PPM\ v', SHELL_STYLE_ARGS,
-      [ ["rpm2cpio", "cpio"], $sh, "-c", 'rpm2cpio < "$0" | cpio -i -d	--verbose "$@"' ]
-      ],
-
-      [ gettext("formail and mpack"), "mbox", "(mail.text)|news", SHELL_STYLE_ARGS,
-      [ ["formail","munpack"], $sh, "-c", 'formail -s munpack "$@" < "$0"' ]
-      ],
-
-      [ gettext("libchm-bin or archmage"), "chm", "Windows HtmlHelp Data", APPEND_GEN_NAME,
-      [ 'extract_chmLib' ],
-      [ 'archmage']
-      ],
-
-      [ gettext("rar or unrar or unrar-free"), "rar",  "RAR.*archive", 0,
-      [ "rar", "x" ],
-      [ "unrar", "x" ]
-      ]
-      ,
-      [ "binutils", "ar|deb", "(Debian binary package|\ ar.*archive)", 0,
-      [ "ar", "-x", "-v" ]
-      ]
-      ,
-      [ "unzip", "zip|cbz|cbr|jar|war|ear|xpi|adf", "Zip.*archive", 0,
-      [ "unzip" ]
-      ]
-      ,
-      [ "lha", "lha|lzh", "LHa.*archive", 0,
-      [ "lha", "x" ]
-      ]
-      ,
-      [ "arj", "arj", "ARJ.*archive", 0,
-      [ "arj", "x" ],
-      [ "unarj", "x" ],
-      ]
-      ,
-      [ "ppmd", "pmd", "PPmd.*archive", 0,
-      [ "PPMd", "x" ]
-      ]
-      ,
-      [ "zoo", "zoo", "Zoo.*archive", 0,
-      [ "unzoo", "-x" ]
-      ]
-      ,
-      [ "sharutils", "shar", "shell.*archive", 0,
-      [ "unshar" ]
-      ]
-      ,
-      [ "sharutils", "uu", "uuencoded", 0,
-      [ "undecode" ]
-      ]
-      ,
-      [ "tnef", "dat", "Transport Neutral Encapsulation Format", 0,
-      [ "tnef", "-v" ]
-      ]
-      ,
-      [ gettext("p7zip or p7zip-full"), "7z", "7-zip.*archive", 0,
-      [ "7z", "x" ]
-      ]
-      ,
-      [ "cabextract", "cab", "CAB file", 0,
-      [ "cabextract" ]
-      ]
-      ,
-      [ "unace", "ace", "ACE.*archive", 0,
-      [ "unace", "e" ]
-      ]
-      ,
-      [ "xdms", "dms", "DMS.*archive", 0,
-      [ "xdms", "x" ]
-      ]
-      ,
-      [ "unlzx", "lzx", "LZX.*archive", 0,
-      [ "unace", "e" ]
-      ]
-      ,
-      [ "macutils", "sea|sea\.bin", "SEA.*archive", 0,
-      [ "macutils", "-v" ]
-      ]
-      ,
-      [ "macutils", "hqx", "BinHex.binary", 0,
-      [ "hexbin", "-v" ]
-      ]
-      ,
-      [ "maybe orange or unzip or unrar or unarj or lha ", "exe", "executable", 3,
-      [ "orange" ],
-      [ "unzip" ],
-      [ "unrar", "x" ],
-      [ "rar", "x" ],
-      [ "arj", "x" ],
-      [ "lha", "x" ]
-      ]
-
-);
-}
-
-sub show_formats
-{
-   print "Known archive formats and tools:\n";
-   my %t;
-   my $len=0;
-   foreach my $line (@tools)
-   {
-      my @dset = @$line;
-      my $sux = $dset[1];
-      $sux=~s/\|/,/g;
-      $t{$sux}=$dset[0];
-      $len=length($sux) if(length($sux)>$len && length($sux)<20);
-      #print $sux . ":\t\t$dset[0]\n";
-   }
-   foreach (sort (keys %t))
-   {
-      print "$_:";
-      my $diff=$len-length($_);
-      print " "x$diff." $t{$_}\n";
-   }
-   exit 1;
-}
-
-sub parse_cli
-{
-   my %options = (
-      "q|quiet"                => \$opt_quiet,
-      "d|debug"                => \$opt_debug,
-      "h|help"                => \$opt_help,
-      "f|force"               => \$opt_force,
-      "s|show-formats"        => \$opt_formats,
-      "u|to-subdir"           => \$opt_umode,
-      "U|smart-subdir"        => \$opt_umode_smart,
-      "v|verbose"             => \$opt_verbose
-   );
-   &show_help unless ( GetOptions(%options));
-   &show_help if ($opt_help);
-   &show_formats if ($opt_formats);
-   while(@ARGV)
-   {
-      if("--" eq $ARGV[0])
-      {
-         shift(@ARGV);
-         @xargs = @ARGV;
-         last;
-      }
-      push(@ifiles, shift(@ARGV));
-   }
-   print STDERR join(" ; ", "ifiles", @ifiles, "xargs", @xargs, "argv", @ARGV, "\n") if $opt_debug;
-}
-
-sub try_unarch
-{
-   my $ifile=shift;
-   my $magicdata=shift;
-   print STDERR "magic string: $magicdata\n" if $opt_debug && $magicdata;
-   UNPIFILE: foreach my $line (@tools)
-   {
-      my ($name, $suxARG, $patARG, $cmdflags) = @$line;
-
-      print STDERR "hm, $magicdata vs. $patARG\n" if ( $opt_debug && $magicdata);
-
-      # needs magic data to test against
-      next if(defined($magicdata) && !defined($patARG));
-
-      next if($catmode && ! ($cmdflags & IS_STREAM_FILTER));
-
-      if(
-         (defined($magicdata) && $magicdata=~/$patARG/i)
-         || ( !defined($magicdata) && $ifile =~ /.*\.($suxARG)$/i) )
-      {
-         print STDERR "got unpacker description for $ifile\n" if $opt_debug;
-         my $misscount=0;
-         my @dset = @$line;
-
-         TOOL: foreach my $pArgs (@dset[4..$#dset])
-         {
-            my @args=@$pArgs;
-            my @prqs = ($args[0]);
-
-            # there is a list of prqs prepended, use that one and weed out the ref
-            @prqs=@{shift(@args)} if( ref($args[0]) eq "ARRAY");
-
-            my $misscountCur=0;
-            foreach(@prqs)
-            {
-               if(!which($_))
-               {
-                  $misscountCur++;
-                  $misscount++;
-               }
-            }
-
-            # if all tools are here? Let's start...
-            if(! $misscountCur)
-            {
-               my $rcodeprev=$retcode;
-               $retcode += ($catmode ? &cat_one($ifile, $line, @args) : &unpack_one($ifile, $line, @args));
-               
-               return 1 if($rcodeprev == $retcode);
-
-               # try other tools if hinted but never in cat mode in order to prevent data corruption
-               return 0 if($catmode);
-               next TOOL if($cmdflags & TRY_OTHER_TOOLS);
-            }
-         }
-         if($misscount)
-         {
-            print STDERR gettext("Error, following packages must be installed in order to proceed:\n").$name."\n";
-            exit 1;
-         }
-      }
-   }
-   return 0;
-}
-
-sub getmagic
-{
-   my $path=shift;
-   print STDERR "getting magic value from $path\n" if $opt_debug;
-   if(open(my $fd, "-|", "file", "-L", $path))
-   {
-      my $fileret=scalar <$fd>;
-      #print STDERR "got: $fileret\n" if $opt_debug;
-      close $fd;
-      chomp $fileret;
-      return $fileret;
-   }
-   return "G.N.D.N.";
-}
-
-sub cat_file
-{
-   my $file=shift;
-   if(open(my $fd, $file) )
-   {
-      my $buf;
-      while(my $len=sysread($fd, $buf, 1<<16, 0))
-      {
-         my $off=0;
-         my $res;
-         while($res=syswrite(STDOUT, $buf, $len, $off))
-         {
-            die "Failed to print: $!\n" if !defined($res);
-            last if 0==$res;
-            $off+=$res;
-            last if $off>=$len;
-         }
-      }
-      close $fd || $retcode++;
-   }
-   else { $retcode++; }
-}
-
-sub process_files
-{
-   IFILE:
-   foreach my $ifile (@ifiles)
-   {
-      if(!-r $ifile)
-      {
-         printf STDERR gettext("Cannot read %s, skipping...\n"), $ifile;
-         $retcode++;
-         next IFILE;
-      }
-
-      next if (&try_unarch($ifile) or &try_unarch($ifile, getmagic($ifile)));
-
-      printf STDERR gettext("Failed to detect file type of %s.\n"), $ifile;
-
-      # print the file as is in cat mode, otherwise remember that problem
-      $retcode += ($catmode ? system("cat", $ifile) : 1);
-   }
-}
-
-sub which
-{
-   my $prog=shift;
-   for(split(/:/,$ENV{"PATH"})) {
-      if(-x "$_/$prog") {
-         return 1;
-      }
-   }
-   return undef;
-}
-
-sub cat_one
-{
-   print STDERR "\ncat_one: @_\n" if $opt_debug;
-   my $file=shift;
-   my $toolRef=shift;
-   my $flags=$toolRef->[3];
-   my @cmd = (SHELL_STYLE_ARGS & $flags) ? (@_, $file, @xargs) : (@_, @xargs, $file);
-   print STDERR join(" ", "test cmd line: ", @cmd, "\n") if $opt_debug;
-   return (system(@cmd) >> 8);
-}
-
-sub unpack_one
-{
-   print STDERR "unpack_one: @_\n" if $opt_debug;
-
-   my $file=shift;
-   my $toolRef=shift;
-   my $cwd=getcwd;
-
-   my $ret=1;
-   my $flags=@{$toolRef}[3];
-
-   my $sufpat=@{$toolRef}[1];
-   my $tgtname=basename($file);
-   $tgtname=~s/(.*)\.($sufpat)$/$1/i;
-
-   return special_debmode($file) if($opt_umode && $file=~/\.deb$/i);
-
-   # make sure that target file/directory for certain types is not occupied
-   if( ( $opt_umode_smart || $opt_umode || ( $flags & (IS_STREAM_FILTER|APPEND_GEN_NAME)) ) && -e $tgtname)
-   {
-      printf STDERR (gettext(
-            "Cannot create target %s: file already exists. Trying alternative targets...\n"),
-         $tgtname);
-      $tgtname.=".unp";
-      if(-e $tgtname)
-      {
-         print STDERR sprintf(gettext(
-         "Cannot create target %s: file already exists\n"), $tgtname);
-         $tgtname.=".".rand;
-      }
-      if(-e $tgtname)
-      {
-         print STDERR sprintf(gettext(
-               "Cannot create target %s: file already exists\n"), $tgtname);
-         exit 1 if $opt_force;
-      }
-      print STDERR "Suggested target name: $tgtname\n";
-   }
-   print STDERR "tgtname: $tgtname\n" if $opt_debug;
-
-   my $tmpdir;
-
-   if($opt_umode || $opt_umode_smart)
-   {
-      $file=Cwd::abs_path($file);
-      print STDERR "set abs.path to $file\n" if $opt_debug;
-      $tmpdir="unp.".rand;
-      mkdir $tmpdir;
-      chdir($tmpdir) || return 23;
-   }
-
-   my @cmd = (SHELL_STYLE_ARGS & $flags) ? (@_, $file, @xargs) : (@_, @xargs, $file);
-
-
-   print STDERR "temp.cmd: ".join("\t", @cmd, "\n") if $opt_debug;
-
-   # filter commands... use shell to keep our code simple. Tar stream may be
-   # inside, detect it and unpack it.
-   if(IS_STREAM_FILTER & $flags)
-   {
-      my $magic="";
-      @cmd=("sh", "-c", join(" ", @_).' "$0" | file -', $file);
-      if(open(my $fh, "-|", @cmd))
-      {
-         $magic = join('', <$fh>);
-         close($fh);
-      }
-      print STDERR "Internal magic: $magic\n" if $opt_debug;
-      if($magic=~/tar.archive/)
-      {
-         @cmd=("sh", "-c", join(" ", @_).' "$0" | tar -v -x -f - "$@" ', $file, @xargs);
-      }
-      else
-      {
-         @cmd=("sh", "-c", join(" ", @_).' "$0" > "$1"', $file, $tgtname);
-      }
-   }
-
-   push(@cmd, $tgtname) if(APPEND_GEN_NAME & $flags);
-
-   print STDERR join(" ", "test cmd line: ", @cmd, "\n") if $opt_debug;
-   
-   $ret = (system(@cmd) >> 8);
-
-   if( $opt_umode_smart)
-   {
-      chdir "..";
-      my @cont=(<$tmpdir/*>, <$tmpdir/.*>);
-      # . and .. and one element?
-      if(3==@cont)
-      {
-         # use same name as target, fall back to checked tgtname if that is already occupied
-         my $cand=basename($cont[0]);
-         if (-e $cand)
-         {
-            print STDERR gettext("Cannot create target directory (already exists), using alternative name\n");
-            $cand=$tgtname ;
-         }
-         return 44 if ! (rename($cont[0], $cand) && rmdir $tmpdir);
-      }
-      else
-      {
-         rename $tmpdir, $tgtname || return 43;
-      }
-
-   }
-   elsif ($opt_umode)
-   {
-      chdir "..";
-      rename($tmpdir, $tgtname) || return 42;
-   }
-
-   chdir $cwd;
-
-   return $ret;
-}
-
-sub special_debmode
-{
-   my $file=shift;
-   basename($file)=~/^(.*)\.deb$/;
-   my $bname=$1;
-   die "cannot recognice package name\n" if !$bname;
-
-   mkdir "control";
-   my $contgt="control/$bname";
-   mkdir $contgt;
-
-   return (system("ar", "x", $file) >> 8 ) +
-   (system("tar", "-z", "-x", "-v", "-f", "control.tar.gz", "-C", 
-         $contgt) >> 8 ) +
-   ( system("tar", "-z", "-x", "-v", "-f", "data.tar.gz") >> 8 );
-}
-```
-
-Change the permission of the file
-```
+cd /usr/bin
+sudo wget https://sources.debian.net/data/main/u/unp/2.0~pre7+nmu1/unp
 chmod 755 /usr/bin/unp
 ```
 
@@ -1188,7 +547,7 @@ sudo yum install python-devel
 Install dependencies
 
 ```bash
-sudo yum install ImageMagick unzip patch gdal-devel
+sudo yum install ImageMagick patch
 export PATH=$PATH:/usr/pgsql-9.5/bin/:/opt/rubies/ruby-2.2.3/bin
 RAILS_ENV=production bundle install --deployment --without development test
 npm install
@@ -1336,6 +695,8 @@ cd /opt/CartoDB-SQL-API
 git checkout master
 ```
 
+> Note: if you want to install a different version of this API, be sure to change "master" in the above to reflect either the `tags/[name of tag]` or the exact version name.
+ 
 Install npm dependencies
 
 ```
@@ -1466,7 +827,7 @@ Change the setting under `,postgres` for host and port to reflect your PostgreSQ
         host: 'postgres server IP',
         port: 5432,
 ```
-        
+
 Under `,analysis` change the endpoint url to match your server url, using the following convention:
 
 ```
@@ -1550,12 +911,12 @@ sudo yum install libcurl-devel httpd-devel
 ```
 
 Run the Passenger Apache module installer:
+
 ```
-sudo yum install libcurl-devel httpd-devel
-sudo passenger-install-apache2-module
+sudo env "PATH=$PATH" passenger-install-apache2-module
 ```
 
-The module installer will take you through a brief dialogue. You can just hit the enter key after each prompt to confirm that you are happy with the default selection, it will then compile and install passenger for apache.
+The module installer will take you through a brief dialogue. You can just hit the enter key after each prompt to confirm that you are happy with the default selection (a "Ruby" focussed install), it will then compile and install passenger for apache.
 
 ### q. Generate self-signed SSL certificate
 
@@ -1577,7 +938,7 @@ sudo nano passenger.conf
 
 Paste the following into your new `passenger.conf` file and save:
 
->Note: be sure you change DNS below to your own hostname
+>Note: be sure you change DNS below to your own hostname; also IMPORTANT - check to see what version of passenger was installed by the above command and adjust the lines below to reflect the proper path name, which includes the version ("5.1.3" here, but 5.1.7 as of the last revision of this document).
 
 ```
    LoadModule passenger_module /opt/rubies/ruby-2.2.3/lib/ruby/gems/2.2.0/gems/passenger-5.1.3/buildout/apache2/mod_passenger.so
@@ -1631,6 +992,13 @@ Paste the following into your new `passenger.conf` file and save:
 </VirtualHost>
 ```
 
+> Note: if you are using certbot (see below) you must manually edit these two lines (from above) to use the following instead (YOUR_DIRECTORY should be changed to the domain name based directory assigned by certbot):
+
+```
+SSLCertificateFile /etc/letsencrypt/live/YOUR_DIRECTORY/cert.pem
+SSLCertificateKeyFile /etc/letsencrypt/live/YOUR_DIRECTORY/privkey.pem
+```
+
 We'll need to create a separate configuration file to enable reverse proxy for the Carto SQL_API:
 
 ```
@@ -1664,12 +1032,22 @@ NameVirtualHost *:9090
 </VirtualHost>
 ```
 
+> Note: if you are using certbot (see below) you must manually edit these two lines (from above) to use the following instead (YOUR_DIRECTORY should be changed to the domain name based directory assigned by certbot):
+
+```
+SSLCertificateFile /etc/letsencrypt/live/YOUR_DIRECTORY/cert.pem
+SSLCertificateKeyFile /etc/letsencrypt/live/YOUR_DIRECTORY/privkey.pem
+```
+
 Create a separate configuration file to enable reverse proxy for the Windshaft-carto:
+
 ```
 sudo nano mapapi.conf
 ```
+
 >Note: be sure you change DNS below to your own hostname
 Paste the following into your new `mapapi.conf` file and save:
+
 ```
 Listen 9191
 
@@ -1696,6 +1074,19 @@ NameVirtualHost *:9191
 </VirtualHost>
 ```
 
+> Note: if you are using certbot (see below) you must manually edit these two lines (from above) to use the following instead (YOUR_DIRECTORY should be changed to the domain name based directory assigned by certbot):
+
+```
+SSLCertificateFile /etc/letsencrypt/live/YOUR_DIRECTORY/cert.pem
+SSLCertificateKeyFile /etc/letsencrypt/live/YOUR_DIRECTORY/privkey.pem
+```
+
+Now start apache:
+
+```
+sudo systemctl start httpd
+```
+
 ### s. Install Certbot to Use letsencrypt SSL Certificate (Optional) ###
 
 The EFF has set up free hosting for secure certificates with a large federation of top-tier web-hosting firms via [http://letsencrypt.org]. You can read more on their website about the service. We'll be using the apache instance of "certbot" to keep our ssl certificates fresh:
@@ -1711,6 +1102,19 @@ Once Certbot is installed, run it and let it replace the existing self-signed ce
 ```
 sudo certbot --apache
 ```
+
+Make sure you have modified the directives `SSLCertificateFile` and `SSLCertificateKeyFile` across all relevant Apache configuration files as noted in the previous section. You can check whether there are lines you've missed using the following command:
+
+```
+grep -R SSLCertificate * /etc/httpd/conf.d/*
+```
+
+Make sure you restart the apache server after all these changes have been made:
+
+```
+sudo systemctl restart httpd
+```
+
 
 #### **Start the Server \(to Test Out Functionality\)** ####
 
@@ -1797,6 +1201,8 @@ Now hopefully you're up and running, there are a few steps still required to get
 
 # 3. Additional Configuration to do after the Carto stack is running #
 
+## 3.1 Carto User and Group Configuration
+
 ### a. Create users and organisations
 
 With a rails web app you use `bundle exec rake` to perform modifications to the database. To get a complete list of your options available, run the following command: `RAILS_ENV=production bundle exec rake -T`
@@ -1882,10 +1288,13 @@ While you're in there, you may also want to edit a few other lines in `/opt/cart
     from: 'from name <email@address.com>'
 ```
 
+## 3.2 CentOS Server Configuration for Production Carto
 
-### d. systemd service for CartoDB-SQL-API
+### a. systemd service for CartoDB-SQL-API
 
-Add CartoDB-SQL-API to systemd service:
+> Note: system services that you will create below are also located in "config" in this repository.
+
+Create a systemd service which we can use to load CartoDB-SQL-API:
 
 ```
 cd /etc/systemd/system
@@ -1898,8 +1307,8 @@ Edit (or create) the file and save:
 [Service]
 ExecStart=/usr/bin/node /opt/CartoDB-SQL-API/app.js production
 Restart=always
-StandardOutput=syslog
-StandardError=syslog
+StandardOutput="/var/log/carto/log/SQL-API_log"
+StandardError="/var/log/carto/log/SQL-API_log"
 SyslogIdentifier=CartoDB-SQL-API
 WorkingDirectory=/opt/CartoDB-SQL-API
 User=carto
@@ -1908,6 +1317,12 @@ Environment='NODE_ENV=production'
 
 [Install]
 WantedBy=multi-user.target
+```
+
+Create the empty log file manually
+
+```
+touch /var/log/carto/log/SQL-API_log
 ```
 
 Start CartoDB-SQL-API
@@ -1922,7 +1337,7 @@ Enable it to auto-startup at boot
 systemctl enable cartodb-sql
 ```
 
-### e. systemd service for Windshaft-cartodb
+### b. systemd service for Windshaft-cartodb
 
 Add Windshaft-cartodb to systemd service:
 
@@ -1937,8 +1352,8 @@ Edit the file and save:
 [Service]
 ExecStart=/usr/bin/node /opt/Windshaft-cartodb/app.js production
 Restart=always
-StandardOutput=syslog
-StandardError=syslog
+StandardOutput="/var/log/carto/log/Windshaft_log"
+StandardError="/var/log/carto/log/Windshaft_log"
 SyslogIdentifier=Windshaft-cartodb
 WorkingDirectory=/opt/Windshaft-cartodb
 User=carto
@@ -1947,6 +1362,12 @@ Environment='NODE_ENV=production'
 
 [Install]
 WantedBy=multi-user.target
+```
+
+Create the empty log file manually
+
+```
+touch /var/log/carto/log/Windshaft_log
 ```
 
 Start CartoDB-SQL-API
@@ -1961,7 +1382,7 @@ Enable it to auto-startup at boot
 systemctl enable windshaft-cartodb
 ```
 
-### f. systemd service for CartoDB Resque process
+### c. systemd service for CartoDB Resque process
 
 Create a bash script
 
@@ -1987,11 +1408,13 @@ chmod 775 run_resque.sh
 ```
 
 Create the empty log file manually
+
 ```
 touch /var/log/carto/log/resque_log
 ```
 
 Add cartodb-resque to systemd service:
+
 ```
 cd /etc/systemd/system
 sudo nano cartodb-resque.service
@@ -2028,7 +1451,7 @@ systemctl enable cartodb-resque
 ```
 
 
-### g. Configure Redis Persistence
+### d. Configure Redis Persistence
 We will need to enable AOF Persistence so Redis will store information that need to be persisted.
 
 ```
@@ -2043,10 +1466,15 @@ Restart redis
 sudo systemctl restart redis_6379
 ```
 
-### h. Carto Data Services API
+
+## 3.3 Install Additional Carto Services (data services, observatory, etc.)
+
+### a. Carto Data Services API
+
 Login to DB server
 
-Install server and client extensions
+Install server and client extensions:
+
 ```
 git clone https://github.com/CartoDB/dataservices-api.git
 cd dataservices-api
@@ -2055,28 +1483,34 @@ cd -
 cd server/extension && sudo make install
 ```
 
-Install python library
+Install python library:
+
 ```
 # in dataservices-api repo root path:
 cd server/lib/python/cartodb_services && pip install -r requirements.txt && sudo pip install . --upgrade
 ```
 
-Create a database to hold all the server part and a user for it
+Create a database to hold all the server part and a user for it:
+
 ```
 CREATE DATABASE dataservices_db ENCODING = 'UTF8' LC_COLLATE = 'en_US.UTF-8' LC_CTYPE = 'en_US.UTF-8';
 CREATE USER dataservices_user;
 ```
 
-Install needed extensions in dataservices_db database
+Install needed extensions in dataservices_db database:
+
 ```
 psql -U postgres -d dataservices_db -c "BEGIN;CREATE EXTENSION IF NOT EXISTS plproxy; COMMIT" -e
 psql -U postgres -d dataservices_db -c "BEGIN;CREATE EXTENSION IF NOT EXISTS plpythonu; COMMIT" -e
 psql -U postgres -d dataservices_db -c "BEGIN;CREATE EXTENSION IF NOT EXISTS cdb_dataservices_server; COMMIT" -e
 ```
 
-### i. Carto Data Services
+### b. Carto Data Services
+
 Login to DB server
-Make the extension available in postgres
+
+Make the extension available in postgres:
+
 ```
 cd ~
 git clone https://github.com/CartoDB/data-services.git
@@ -2084,34 +1518,39 @@ cd data-services/geocoder/extension
 sudo make install
 ```
 
-Download the internal geocoder data
+Download the internal geocoder data:
+
 ```
 cd ~/data-services/geocoder
 ./geocoder_dowload_dumps
 ```
 
 Once the data is downloaded, execute this command:
+
 ```
 ./geocoder_restore_dump postgres dataservices_db db_dumps/*.sql
 ```
 
-Install geocoder extension
+Install geocoder extension:
+
 ```
 cd ~/data-services/geocoder
 sudo make all install
 ```
 
-Install onto a CARTO user's database
-It is mandatory to install it into a CARTO user's database
+Install onto a CARTO user's database (it is mandatory to install it into a CARTO user's database)
 
 ```
 psql -U development_cartodb_user_fe3b850a-01c0-48f9-8a26-a82f09e9b53f cartodb_dev_user_fe3b850a-01c0-48f9-8a26-a82f09e9b53f_db
 CREATE EXTENSION cdb_geocoder;
 ```
 
-### j. Install data observatory extension
-Login to DB server
-Make the extension available in postgresql to be installed
+### c. Install data observatory extension
+
+Begin by logging out of the web server and login to your db server (if you're working with a 2 server configuration)
+
+Make the extension available in postgresql to be installed:
+
 ```
 cd ~
 git clone https://github.com/CartoDB/observatory-extension.git
@@ -2120,11 +1559,13 @@ sudo make install
 ```
 
 This extension needs data, dumps are not available so we're going to use the test fixtures to make it work.
+
 ```
 psql -U postgres -d dataservices_db -f src/pg/test/fixtures/load_fixtures.sql
 ```
 
 Give permission to execute and select to the dataservices_user user:
+
 ```
 psql -U postgres -d dataservices_db -c "BEGIN;CREATE EXTENSION IF NOT EXISTS observatory VERSION 'dev'; COMMIT" -e
 psql -U postgres -d dataservices_db -c "BEGIN;GRANT SELECT ON ALL TABLES IN SCHEMA cdb_observatory TO dataservices_user; COMMIT" -e
@@ -2133,14 +1574,18 @@ psql -U postgres -d dataservices_db -c "BEGIN;GRANT SELECT ON ALL TABLES IN SCHE
 psql -U postgres -d dataservices_db -c "BEGIN;GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA observatory TO dataservices_user; COMMIT" -e
 ```
 
-### k. Server configuration
+### d. Configure Carto Server to use Data Services / Observatory
+
 Login to DB Server
+
 Enter psql CLI for carto_db_production
+
 ```
 psql -U postgres carto_db_production
 ```
 
 Redis configuration
+
 ```
 SELECT CDB_Conf_SetConf(
     'redis_metadata_config',
@@ -2153,6 +1598,7 @@ SELECT CDB_Conf_SetConf(
 ```
 
 Users/Organizations
+
 ```
 SELECT CDB_Conf_SetConf(
     'user_config',
@@ -2161,6 +1607,7 @@ SELECT CDB_Conf_SetConf(
 ```
 
 Data Observatory
+
 ```
 SELECT CDB_Conf_SetConf(
     'data_observatory_conf',
@@ -2170,19 +1617,26 @@ SELECT CDB_Conf_SetConf(
 ```
 
 User database configuration
+
 User (client) databases need also some configuration so that the client extension can access the server:
+
 ```
 psql -U postgres cartodb_user_7747c61a-23a1-4ccc-a738-747e8ee24821_db
 SELECT CDB_Conf_SetConf('user_config', '{"is_organization": false, "entity_name": "<YOUR_USERNAME>"}');
 ```
+
 The geocoder_server_config (the name is not accurate for historical reasons) entry points to the dataservices server DB (you can use a specific database for the server or your same user's):
+
 ```
 SELECT CDB_Conf_SetConf('geocoder_server_config', '{ "connection_str": "host=localhost port=5432 dbname=<SERVER_DB_NAME> user=postgres"}');
 ```
 
-### l. Update cartodb configuration
-Login to Web Server
+### e. Update Cartodb configuration
+
+Make sure you are logged into the Web Server (if on a 2 server config)
+
 Edit the following session of /opt/cartodb/config/app_config.yml as below
+
 ```
   dataservices:
     enabled:
@@ -2194,6 +1648,7 @@ Edit the following session of /opt/cartodb/config/app_config.yml as below
 ```
 
 Add the following entry to the geocoder entry of the cartodb/config/app_config.yml file: 
+
 ```
   geocoder:
     #force_batch: true
@@ -2206,6 +1661,7 @@ Add the following entry to the geocoder entry of the cartodb/config/app_config.y
 ```
 
 Execute the rake tasks to update all the users and organizations:
+
 ```
 cd /opt/cartodb
 RAILS_ENV=production bundle exec rake cartodb:db:configure_geocoder_extension_for_non_org_users[username,all_users]
@@ -2213,11 +1669,66 @@ RAILS_ENV=production bundle exec rake cartodb:db:configure_geocoder_extension_fo
 ```
 
 Restart Apache to make it effective.
+
 ```
 sudo service httpd restart
 ```
 
-## Notes
+# 4. Upgrade process for Carto components
+
+In this next section, we will document the process of upgrading your Carto server components to new versions. The Carto team works on a "continuous development" basis, so updates are very frequently made to the platform. However, major releases are given tags in github, and important changes (and steps required for upgrade) are detailed in the release note history. Especially because versions change so often , you should take the following as an example of how to set up an upgrade and not strictly as a de facto process for your server.
+
+4.1. Check versions for currently installed Carto components:
+
+You will need to know what versions of each component you installed originally. To test this, do the following:
+
+On your web server:
+
+```
+cd /opt/cartodb
+git describe --tags
+
+cd /opt/CartoDB-SQL-API
+git describe --tags
+
+cd /opt/Windshaft-cartodb
+git describe --tags
+
+cd /opt/dataservices-api
+git describe --tags
+```
+
+
+On your database server, check:
+
+```
+cd /opt/cartodb-postgresql
+git describe --tags
+
+cd /opt/dataservices
+git describe --tags
+
+cd /opt/observatory
+git describe --tags
+```
+
+Now you have a collection of "tags" you can use to generate a list of updates required. Now make your way over to each github page for these components and check the current "tag" (note that some of these have multiple branches, especially the postgresql components, so be sure you're not accidentally downgrading).
+
+The steps you need to take will be an aggregation of all details from each version increment detailed in the documentation for those components, also with the caveat that you're working with CentOS and not Ubuntu (see above for our suggestios on how to translate ubuntu packages into Centos etc.). 
+
+- For the CartoDB application, see here: https://github.com/CartoDB/cartodb/blob/master/NEWS.md 
+- For the Carto SQL API, see here: https://github.com/CartoDB/CartoDB-SQL-API/blob/master/NEWS.md
+- For Windshaft-CartoDB (the tiler and MAPS API), see here: https://github.com/CartoDB/Windshaft-cartodb/blob/master/NEWS.md
+- For Data Services API: https://github.com/CartoDB/dataservices-api/blob/master/NEWS.md
+
+And on your database server, components to check are:
+- https://github.com/CartoDB/cartodb-postgresql/blob/master/NEWS.md
+- https://github.com/CartoDB/observatory-extension/blob/master/NEWS.md
+- https://github.com/CartoDB/data-services/blob/master/NEWS.md
+
+
+
+# Notes
 
 [^1]: For more on this fix I've used here, see [http://unix.stackexchange.com/questions/83191/how-to-make-sudo-preserve-path](http://unix.stackexchange.com/questions/83191/how-to-make-sudo-preserve-path).
 
