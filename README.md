@@ -1466,7 +1466,6 @@ Restart redis
 sudo systemctl restart redis_6379
 ```
 
-
 ## 3.3 Install Additional Carto Services (data services, observatory, etc.)
 
 ### a. Carto Data Services API
@@ -1678,7 +1677,7 @@ sudo service httpd restart
 
 In this next section, we will document the process of upgrading your Carto server components to new versions. The Carto team works on a "continuous development" basis, so updates are very frequently made to the platform. However, major releases are given tags in github, and important changes (and steps required for upgrade) are detailed in the release note history. Especially because versions change so often , you should take the following as an example of how to set up an upgrade and not strictly as a de facto process for your server.
 
-4.1. Check versions for currently installed Carto components:
+# 4.1 Check versions for currently installed Carto components:
 
 You will need to know what versions of each component you installed originally. To test this, do the following:
 
@@ -1726,7 +1725,136 @@ And on your database server, components to check are:
 - https://github.com/CartoDB/observatory-extension/blob/master/NEWS.md
 - https://github.com/CartoDB/data-services/blob/master/NEWS.md
 
+# 4.2 On Web server
+### a. Upgrade CartoDB application
+Stop Apache first
+```
+sudo service httpd stop
+```
 
+Make a backup of your current cartodb folder
+```
+cp -Rp /opt/cartodb /opt/cartodb.backup
+```
+Note. make sure you have enough space under /opt or you can choose a different location
+
+Check out the latest version from Office Github source
+```
+cd /opt/cartodb
+git checkout master
+```
+
+Run following rake tasks
+```
+RAILS_ENV=production bundle exec rake db:migrate
+RAILS_ENV=production bundle exec rake cartodb:db:reset_trigger_check_quota
+RAILS_ENV=production bundle exec rake cartodb:db:load_functions
+RAILS_ENV=production bundle exec rake cartodb:db:create_schemas
+```
+
+Restart Apache
+```
+sudo service httpd start
+```
+
+### b. Upgrade Carto SQL API application
+Stop SQL API service first
+```
+sudo service cartodb-sql stop
+```
+
+Make a backup of your current cartodb folder
+```
+cp -Rp /opt/CartoDB-SQL-API /opt/CartoDB-SQL-API.backup
+```
+Note. make sure you have enough space under /opt or you can choose a different location
+
+Check out the latest version from Office Github source
+```
+cd /opt/CartoDB-SQL-API
+git checkout master
+```
+Start SQL API service
+```
+sudo service cartodb-sql start
+```
+
+### c. Upgrade Windshaft-CartoDB application
+Stop windshaft service first
+```
+sudo service windshaft-cartodb stop
+```
+
+Make a backup of your current cartodb folder
+```
+cp -Rp /opt/Windshaft-cartodb /opt/Windshaft-cartodb.backup
+```
+Note. make sure you have enough space under /opt or you can choose a different location
+
+Check out the latest version from Office Github source
+```
+cd /opt/Windshaft-cartodb
+git checkout master
+```
+Start Windshaft service
+```
+sudo service windshaft-cartodb start
+```
+
+# 4.2 On DB server
+### a. Upgrade Cartodb-postgresql
+Check out the latest version from Office Github source
+```
+cd ~/cartodb-postgresql
+git checkout master
+```
+Install the new extension
+```
+sudo make all install
+```
+
+Updating the version of cartodb extension
+```
+su -l postgres
+psql -d carto_db_production
+ALTER EXTENSION cartodb UPDATE TO 'x.x.x';
+\q
+```
+
+### b. Upgrade Observatory extension
+Check out the latest version from Office Github source
+```
+cd ~/observatory-extension
+git checkout master
+```
+Install the new extension
+```
+sudo make install
+```
+
+### c. Upgrade dataservices-api
+Check out the latest version from Office Github source
+```
+cd ~/dataservices-api
+git checkout master
+```
+Install the new API
+```
+cd client && sudo make install
+cd -
+cd server/extension && sudo make install
+```
+
+### d. Upgrade data-services
+Check out the latest version from Office Github source
+```
+cd ~/data-services
+git checkout master
+```
+Install the new geocode extension
+```
+sudo make all install
+```
 
 # Notes
 
