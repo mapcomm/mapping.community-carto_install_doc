@@ -1738,6 +1738,8 @@ cp -Rp /opt/cartodb /opt/cartodb.backup
 ```
 Note. make sure you have enough space under /opt or you can choose a different location
 
+Login as carto user: `su carto`
+
 Check out the latest version from Office Github source
 ```
 cd /opt/cartodb
