@@ -1743,6 +1743,18 @@ Check out the latest version from Office Github source
 cd /opt/cartodb
 git checkout master
 ```
+Install dependencies
+```
+export PATH=$PATH:/usr/pgsql-9.5/bin/:/opt/rubies/ruby-2.2.3/bin
+RAILS_ENV=production bundle install --deployment --without development test
+npm install
+```
+Install all necessary gems:
+```
+bundle install
+export PATH=$PATH:$PWD/node_modules/grunt-cli/bin
+bundle exec grunt --environment production
+```
 
 Run following rake tasks
 ```
