@@ -1828,7 +1828,8 @@ git pull
 ```
 Install the new extension
 ```
-sudo make all install
+export PATH=$PATH:/usr/pgsql-9.5/bin/:/opt/rubies/ruby-2.2.3/bin
+sudo env "PATH=$PATH" make all install
 ```
 
 Updating the version of cartodb extension
