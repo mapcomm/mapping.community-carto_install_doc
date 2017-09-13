@@ -1826,6 +1826,7 @@ cd /opt/cartodb-postgresql
 git checkout master
 git pull
 ```
+
 Install the new extension
 ```
 export PATH=$PATH:/usr/pgsql-9.5/bin/:/opt/rubies/ruby-2.2.3/bin
@@ -1834,7 +1835,7 @@ sudo env "PATH=$PATH" make all install
 
 Updating the version of cartodb extension
 ```
-su -l postgres
+sudo su -l postgres
 psql -d carto_db_production
 ALTER EXTENSION cartodb UPDATE TO 'x.x.x';
 \q
