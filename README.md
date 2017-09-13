@@ -187,7 +187,7 @@ sudo createuser tileuser --no-createrole --no-createdb --no-superuser -U postgre
 This extension contains functions that are used by different parts of the CartoDB platform, included the Editor and the SQL and Maps API \(as below\).
 
 ```
-cd ~/
+cd /opt
 git clone https://github.com/CartoDB/cartodb-postgresql.git
 cd cartodb-postgresql/
 ```
@@ -1475,7 +1475,9 @@ Login to DB server
 Install server and client extensions:
 
 ```
+cd /opt
 git clone https://github.com/CartoDB/dataservices-api.git
+export PATH=$PATH:/usr/pgsql-9.5/bin/
 cd dataservices-api
 cd client && sudo make install
 cd -
@@ -1511,7 +1513,7 @@ Login to DB server
 Make the extension available in postgres:
 
 ```
-cd ~
+cd /opt
 git clone https://github.com/CartoDB/data-services.git
 cd data-services/geocoder/extension
 sudo make install
@@ -1520,7 +1522,7 @@ sudo make install
 Download the internal geocoder data:
 
 ```
-cd ~/data-services/geocoder
+cd /opt/data-services/geocoder
 ./geocoder_dowload_dumps
 ```
 
@@ -1533,7 +1535,7 @@ Once the data is downloaded, execute this command:
 Install geocoder extension:
 
 ```
-cd ~/data-services/geocoder
+cd /opt/data-services/geocoder
 sudo make all install
 ```
 
@@ -1551,7 +1553,7 @@ Begin by logging out of the web server and login to your db server (if you're wo
 Make the extension available in postgresql to be installed:
 
 ```
-cd ~
+cd /opt
 git clone https://github.com/CartoDB/observatory-extension.git
 cd observatory
 sudo make install
@@ -1742,6 +1744,7 @@ Check out the latest version from Office Github source
 ```
 cd /opt/cartodb
 git checkout master
+git pull
 ```
 Install dependencies
 ```
@@ -1751,7 +1754,6 @@ npm install
 ```
 Install all necessary gems:
 ```
-bundle install
 export PATH=$PATH:$PWD/node_modules/grunt-cli/bin
 bundle exec grunt --environment production
 ```
@@ -1761,7 +1763,6 @@ Run following rake tasks
 RAILS_ENV=production bundle exec rake db:migrate
 RAILS_ENV=production bundle exec rake cartodb:db:reset_trigger_check_quota
 RAILS_ENV=production bundle exec rake cartodb:db:load_functions
-RAILS_ENV=production bundle exec rake cartodb:db:create_schemas
 ```
 
 Restart Apache
@@ -1785,6 +1786,7 @@ Check out the latest version from Office Github source
 ```
 cd /opt/CartoDB-SQL-API
 git checkout master
+git pull
 ```
 Start SQL API service
 ```
@@ -1807,18 +1809,20 @@ Check out the latest version from Office Github source
 ```
 cd /opt/Windshaft-cartodb
 git checkout master
+git pull
 ```
 Start Windshaft service
 ```
 sudo service windshaft-cartodb start
 ```
 
-# 4.2 On DB server
+# 4.3 On DB server
 ### a. Upgrade Cartodb-postgresql
 Check out the latest version from Office Github source
 ```
-cd ~/cartodb-postgresql
+cd /opt/cartodb-postgresql
 git checkout master
+git pull
 ```
 Install the new extension
 ```
@@ -1836,8 +1840,9 @@ ALTER EXTENSION cartodb UPDATE TO 'x.x.x';
 ### b. Upgrade Observatory extension
 Check out the latest version from Office Github source
 ```
-cd ~/observatory-extension
+cd /opt/observatory-extension
 git checkout master
+git pull
 ```
 Install the new extension
 ```
@@ -1847,8 +1852,9 @@ sudo make install
 ### c. Upgrade dataservices-api
 Check out the latest version from Office Github source
 ```
-cd ~/dataservices-api
+cd /opt/dataservices-api
 git checkout master
+git pull
 ```
 Install the new API
 ```
@@ -1860,8 +1866,9 @@ cd server/extension && sudo make install
 ### d. Upgrade data-services
 Check out the latest version from Office Github source
 ```
-cd ~/data-services
+cd /opt/data-services
 git checkout master
+git pull
 ```
 Install the new geocode extension
 ```
