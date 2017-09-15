@@ -1740,6 +1740,8 @@ cp -Rp /opt/cartodb /opt/cartodb.backup
 ```
 Note. make sure you have enough space under /opt or you can choose a different location
 
+Login as carto user: `su carto`
+
 Check out the latest version from Office Github source
 ```
 cd /opt/cartodb
@@ -1824,14 +1826,16 @@ cd /opt/cartodb-postgresql
 git checkout master
 git pull
 ```
+
 Install the new extension
 ```
-sudo make all install
+export PATH=$PATH:/usr/pgsql-9.5/bin/:/opt/rubies/ruby-2.2.3/bin
+sudo env "PATH=$PATH" make all install
 ```
 
 Updating the version of cartodb extension
 ```
-su -l postgres
+sudo su -l postgres
 psql -d carto_db_production
 ALTER EXTENSION cartodb UPDATE TO 'x.x.x';
 \q
