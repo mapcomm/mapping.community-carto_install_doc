@@ -1756,7 +1756,8 @@ RAILS_ENV=production bundle install --deployment --without development test
 Edit package.json file and change the required version of grunt from 1.0.1 to 0.4.5
 ```
 nano package.json
-"grunt": "0.4.5",
+Change "grunt": "1.0.1", to "grunt": "0.4.5",
+
 ```
 Note: At the time of writing, in order to install grunt for Production without errors, we have to keep grunt at version 0.4.5. If you are using CartoDB in Development environment, you can skip this step.
 
