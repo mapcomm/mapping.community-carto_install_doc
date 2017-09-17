@@ -1752,6 +1752,17 @@ Install dependencies
 ```
 export PATH=$PATH:/usr/pgsql-9.5/bin/:/opt/rubies/ruby-2.2.3/bin
 RAILS_ENV=production bundle install --deployment --without development test
+```
+Edit package.json file and change the required version of grunt from 1.0.1 to 0.4.5
+```
+nano package.json
+Change "grunt": "1.0.1", to "grunt": "0.4.5",
+
+```
+Note: At the time of writing, in order to install grunt for Production without errors, we have to keep grunt at version 0.4.5. If you are using CartoDB in Development environment, you can skip this step.
+
+Run npm to install other dependencies
+```
 npm install
 ```
 Install all necessary gems:
@@ -1837,7 +1848,7 @@ Updating the version of cartodb extension
 ```
 sudo su -l postgres
 psql -d carto_db_production
-ALTER EXTENSION cartodb UPDATE TO 'x.x.x';
+ALTER EXTENSION cartodb UPDATE TO '0.1.1';
 \q
 ```
 
