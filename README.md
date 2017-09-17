@@ -1848,7 +1848,7 @@ Updating the version of cartodb extension
 ```
 sudo su -l postgres
 psql -d carto_db_production
-ALTER EXTENSION cartodb UPDATE TO 'x.x.x';
+ALTER EXTENSION cartodb UPDATE TO '0.1.1';
 \q
 ```
 
