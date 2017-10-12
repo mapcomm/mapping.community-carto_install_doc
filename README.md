@@ -1844,11 +1844,13 @@ export PATH=$PATH:/usr/pgsql-9.5/bin/:/opt/rubies/ruby-2.2.3/bin
 sudo env "PATH=$PATH" make all install
 ```
 
-Updating the version of cartodb extension
+Make sure the new exensions are created
 ```
 sudo su -l postgres
 psql -d carto_db_production
-ALTER EXTENSION cartodb UPDATE TO '0.1.1';
+CREATE EXTENSION IF NOT EXISTS plpythonu;
+CREATE EXTENSION IF NOT EXISTS postgis;
+CREATE EXTENSION IF NOT EXISTS cartodb;
 \q
 ```
 
