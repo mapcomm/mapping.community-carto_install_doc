@@ -1826,21 +1826,45 @@ Make a backup of your current cartodb folder
 ```
 cp -Rp /opt/Windshaft-cartodb /opt/Windshaft-cartodb.backup
 ```
-Note. make sure you have enough space under /opt or you can choose a different location
+Note: make sure you have enough space under /opt or you can choose a different location
 
-Check out the latest version from Office Github source
+Preserve your windshaft configuration file:
+```
+cp /opt/Windshaft-cartodb/config/environments/production.js /tmp
+```
+
+Option 1: we have found in testing that it may be better to perform a fresh reinstall of the new version rather than upgrade in-line. If you'd like to do this, here are the steps:
+
+```
+sudo rm -fr /opt/Windshaft-cartodb
+cd /opt
+git clone https://github.com/CartoDB/Windshaft-cartodb.git
+sudo chown -R carto Windshaft-cartodb
+cd Windshaft-cartodb
+npm install
+sudo cp /opt/Windshaft-cartodb/config/environments/production.js /opt/Windshaft-cartodb/config/environments/
+sudo chown carto:carto production.js
+mkdir /opt/cartodb/tile_assets/
+touch /opt/Windshaft-cartodb/logs
+```
+
+Option 2: Alternately, check out the latest version from Office Github source from within your existing direction:
+
 ```
 cd /opt/Windshaft-cartodb
 git checkout master
 git pull
 ```
+
 Start Windshaft service
 ```
 sudo service windshaft-cartodb start
 ```
 
 # 4.3 On DB server
+
 ### a. Upgrade Cartodb-postgresql
+
 Check out the latest version from Office Github source
 ```
 cd /opt/cartodb-postgresql
