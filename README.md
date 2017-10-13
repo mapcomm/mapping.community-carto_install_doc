@@ -1794,6 +1794,7 @@ sudo service httpd start
 ```
 
 ### b. Upgrade Carto SQL API application
+
 Stop SQL API service first
 ```
 sudo service cartodb-sql stop
@@ -1805,18 +1806,39 @@ cp -Rp /opt/CartoDB-SQL-API /opt/CartoDB-SQL-API.backup
 ```
 Note. make sure you have enough space under /opt or you can choose a different location
 
-Check out the latest version from Office Github source
+Preserve your carto-sql-api configuration file:
+```
+cp /opt/CartoDB-SQL-API/config/environments/production.js /tmp
+```
+
+Option 1: we have found in testing that it may be better to perform a fresh reinstall of the new version rather than upgrade in-line. If you'd like to do this, here are the steps:
+
+```
+sudo rm -fr CartoDB-SQL-API
+cd /opt
+sudo git clone https://github.com/CartoDB/CartoDB-SQL-API.git
+sudo chown -R carto Windshaft-cartodb
+cd /opt/CartoDB-SQL-API
+npm install
+sudo cp /tmp/production.js /opt/CartoDB-SQL-API/config/environments/
+sudo chown carto:carto production.js
+```
+
+Option 2: Alternately, check out the latest version from Office Github source from within your existing direction:
+
 ```
 cd /opt/CartoDB-SQL-API
 git checkout master
 git pull
 ```
-Start SQL API service
+
+Start SQL API service:
 ```
 sudo service cartodb-sql start
 ```
 
 ### c. Upgrade Windshaft-CartoDB application
+
 Stop windshaft service first
 ```
 sudo service windshaft-cartodb stop
@@ -1842,7 +1864,7 @@ git clone https://github.com/CartoDB/Windshaft-cartodb.git
 sudo chown -R carto Windshaft-cartodb
 cd Windshaft-cartodb
 npm install
-sudo cp /opt/Windshaft-cartodb/config/environments/production.js /opt/Windshaft-cartodb/config/environments/
+sudo cp /tmp/production.js /opt/Windshaft-cartodb/config/environments/
 sudo chown carto:carto production.js
 mkdir /opt/cartodb/tile_assets/
 touch /opt/Windshaft-cartodb/logs
