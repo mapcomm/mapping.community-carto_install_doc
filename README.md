@@ -1729,6 +1729,7 @@ And on your database server, components to check are:
 
 # 4.2 On Web server
 ### a. Upgrade CartoDB application
+
 Stop Apache first
 ```
 sudo service httpd stop
@@ -1748,23 +1749,26 @@ cd /opt/cartodb
 git checkout master
 git pull
 ```
+
 Install dependencies
 ```
 export PATH=$PATH:/usr/pgsql-9.5/bin/:/opt/rubies/ruby-2.2.3/bin
 RAILS_ENV=production bundle install --deployment --without development test
 ```
+
 Edit package.json file and change the required version of grunt from 1.0.1 to 0.4.5
 ```
 nano package.json
 Change "grunt": "1.0.1", to "grunt": "0.4.5",
-
 ```
+
 Note: At the time of writing, in order to install grunt for Production without errors, we have to keep grunt at version 0.4.5. If you are using CartoDB in Development environment, you can skip this step.
 
 Run npm to install other dependencies
 ```
 npm install
 ```
+
 Install all necessary gems:
 ```
 export PATH=$PATH:$PWD/node_modules/grunt-cli/bin
@@ -1776,6 +1780,12 @@ Run following rake tasks
 RAILS_ENV=production bundle exec rake db:migrate
 RAILS_ENV=production bundle exec rake cartodb:db:reset_trigger_check_quota
 RAILS_ENV=production bundle exec rake cartodb:db:load_functions
+```
+
+Update the postgresql extension:
+```
+cd /opt/cartodb/lib/sql/
+PGUSER=postgres make all install
 ```
 
 Restart Apache
@@ -1861,7 +1871,7 @@ git pull
 ```
 Install the new extension
 ```
-sudo make install
+PGUSER=postgres sudo make install
 ```
 
 ### c. Upgrade dataservices-api
