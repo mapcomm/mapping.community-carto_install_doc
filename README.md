@@ -1232,6 +1232,7 @@ RAILS_ENV=production bundle exec rake cartodb:db:set_unlimited_table_quota["${SU
 RAILS_ENV=production bundle exec rake cartodb:db:set_user_private_tables_enabled["${SUBDOMAIN}",'true']
 RAILS_ENV=production bundle exec rake cartodb:db:set_user_account_type["${SUBDOMAIN}",'[DEDICATED]']
 RAILS_ENV=production bundle exec rake cartodb:set_custom_limits_for_user["${SUBDOMAIN}",import_fil‌e_size,table_row_cou‌nt,concurrent_import‌s]
+RAILS_ENV=production bundle exec rake user:change:max_layers["${SUBDOMAIN}",25]
 ```
 
 Now your account has a 10gb storage limit, unlimited tables, the ability to create private tables, and a "dedicated" class account.
@@ -1792,6 +1793,8 @@ Restart Apache
 ```
 sudo service httpd start
 ```
+
+Note: if you do a clean re-install for your upgrade process, you will need to re-create `/opt/cartodb/script/run_resque.sh` in order for the Windshaft application service to function properly (as per step 3.2.c above).
 
 ### b. Upgrade Carto SQL API application
 
