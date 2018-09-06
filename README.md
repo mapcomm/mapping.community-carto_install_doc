@@ -78,6 +78,7 @@ Begin by installing some of the basic required components of your server:
 ```bash
 sudo yum install autoconf bison flex binutils
 sudo yum install gcc gcc-c++ make openssl-devel tcl nano wget
+sudo yum install dejavu-sans-fonts lato-fonts open-sans-fonts
 ```
 
 In contrast to Ubuntu, the main CentOS repository lacks many server packages, so it is typical to use the EPEL \([Extra Packages for Enterprise Linux](https://fedoraproject.org/wiki/EPEL/FAQ#howtouse%29\) repository and "voila" some of the packages noted below, including "redis" and "postgis" become available:
